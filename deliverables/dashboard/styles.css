@@ -18,6 +18,7 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: "Avenir Next", "Nunito Sans", "Trebuchet MS", sans-serif;
+  line-height: 1.45;
   color: var(--ink);
   background: radial-gradient(circle at 18% 8%, #fff8e7 0%, var(--bg-0) 30%, var(--bg-1) 100%);
   overflow-x: hidden;
@@ -50,7 +51,7 @@ body {
 .wrap {
   max-width: 1250px;
   margin: 0 auto;
-  padding: 1.5rem;
+  padding: clamp(0.8rem, 2.4vw, 1.5rem);
 }
 
 .hero {
@@ -106,6 +107,7 @@ h1 {
   padding: 0.9rem;
   box-shadow: var(--shadow);
   animation: revealUp 420ms ease-out both;
+  min-width: 0;
 }
 
 .card:nth-child(2) {
@@ -254,10 +256,73 @@ h2 {
 }
 
 @media (max-width: 860px) {
+  .hero {
+    padding-top: 0.6rem;
+  }
+
+  .subtitle {
+    font-size: 0.95rem;
+  }
+
+  .pill {
+    font-size: 0.78rem;
+    padding: 0.28rem 0.58rem;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
   .card-wide {
     grid-column: auto;
+  }
+
+  .card {
+    padding: 0.8rem;
+    border-radius: 14px;
+  }
+}
+
+@media (max-width: 560px) {
+  body {
+    font-size: 15px;
+  }
+
+  .bg-orb {
+    opacity: 0.2;
+    filter: blur(6px);
+  }
+
+  .eyebrow {
+    font-size: 0.74rem;
+    letter-spacing: 0.11em;
+  }
+
+  h2 {
+    font-size: 1rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .meta-row {
+    gap: 0.38rem;
+  }
+
+  .lanes,
+  .health-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lane,
+  .health-box,
+  .kv-row {
+    padding: 0.52rem;
+  }
+
+  .edge-flow {
+    gap: 0.35rem;
+  }
+
+  .edge-chip {
+    font-size: 0.72rem;
+    padding: 0.24rem 0.48rem;
   }
 }
