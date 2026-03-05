@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Command Center Dashboard</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="bg-orb bg-orb-a"></div>
+    <div class="bg-orb bg-orb-b"></div>
+    <div class="wrap">
+      <header class="hero">
+        <p class="eyebrow">Raspberry-PI-Zero</p>
+        <h1>Command Center Dashboard</h1>
+        <p class="subtitle">
+          Topology, skills, routing, and guardrail health from canonical project files.
+        </p>
+        <div class="meta-row">
+          <span id="updatedOn" class="pill">updated_on: ...</span>
+          <span id="nodeCount" class="pill">nodes: ...</span>
+          <span id="edgeCount" class="pill">edges: ...</span>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="card card-wide">
+          <h2>Agent Graph</h2>
+          <div id="graphLanes" class="lanes"></div>
+          <div id="edgeFlow" class="edge-flow"></div>
+        </section>
+
+        <section class="card">
+          <h2>Skill Bindings</h2>
+          <div id="skillsPanel"></div>
+        </section>
+
+        <section class="card">
+          <h2>Prompt Sources</h2>
+          <div id="promptsPanel"></div>
+        </section>
+
+        <section class="card">
+          <h2>Permissions</h2>
+          <div id="permissionsPanel"></div>
+        </section>
+
+        <section class="card">
+          <h2>Cost Controls</h2>
+          <div id="costPanel"></div>
+        </section>
+
+        <section class="card">
+          <h2>Scope</h2>
+          <div id="scopePanel"></div>
+        </section>
+
+        <section class="card card-wide">
+          <h2>Health</h2>
+          <div id="healthPanel"></div>
+        </section>
+      </main>
+    </div>
+
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

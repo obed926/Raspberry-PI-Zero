@@ -17,6 +17,8 @@
 | T-005 | Fix P2-1: Add routing targets to agents.yaml | orchestrator_pm | [x] | domain_pm, platform_pm, ops_pm added as templates. |
 | T-006 | Fix P2-2: Sync mcp-registry.yaml with mcp-registry.md | domain_pm | [x] | Chrome DevTools + Playwright added to YAML registry. |
 | T-007 | Fix P2-3: Deduplicate signals-intake.md | ops_pm | [x] | Root file is now a 3-line pointer to canonical. |
+| T-008 | Build initial command-center dashboard UI | worker_exec | [x] | Added static dashboard at deliverables/dashboard/ (index.html, styles.css, main.js) reading map/log sources. |
+| T-009 | Harden dashboard serving for pi-zero.local root URL | worker_exec | [x] | Added root redirect index and dashboard local data fallbacks under deliverables/dashboard/data/. |
 
 ## Guardrail Incidents
 

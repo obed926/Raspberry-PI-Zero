@@ -1,0 +1,263 @@
+:root {
+  --bg-0: #f7f4ea;
+  --bg-1: #f0e5d5;
+  --ink: #1f1d1a;
+  --muted: #625a4c;
+  --accent: #166a78;
+  --accent-2: #c75b39;
+  --line: rgba(31, 29, 26, 0.14);
+  --card: rgba(255, 252, 246, 0.8);
+  --shadow: 0 22px 55px rgba(38, 29, 9, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: "Avenir Next", "Nunito Sans", "Trebuchet MS", sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 18% 8%, #fff8e7 0%, var(--bg-0) 30%, var(--bg-1) 100%);
+  overflow-x: hidden;
+}
+
+.bg-orb {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(8px);
+  opacity: 0.45;
+  z-index: -1;
+}
+
+.bg-orb-a {
+  width: 340px;
+  height: 340px;
+  background: #ffe3a0;
+  top: -70px;
+  right: -90px;
+}
+
+.bg-orb-b {
+  width: 240px;
+  height: 240px;
+  background: #b8e7ef;
+  bottom: -40px;
+  left: -60px;
+}
+
+.wrap {
+  max-width: 1250px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.hero {
+  padding: 1rem 0 0.8rem;
+  animation: revealUp 420ms ease-out both;
+}
+
+.eyebrow {
+  margin: 0;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+}
+
+h1 {
+  margin: 0.35rem 0 0;
+  font-size: clamp(1.6rem, 3.8vw, 2.7rem);
+  line-height: 1.1;
+}
+
+.subtitle {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  max-width: 68ch;
+}
+
+.meta-row {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.9rem;
+}
+
+.pill {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.66);
+  border-radius: 999px;
+  padding: 0.3rem 0.68rem;
+  font-size: 0.82rem;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 0.9rem;
+  box-shadow: var(--shadow);
+  animation: revealUp 420ms ease-out both;
+}
+
+.card:nth-child(2) {
+  animation-delay: 30ms;
+}
+
+.card:nth-child(3) {
+  animation-delay: 70ms;
+}
+
+.card:nth-child(4) {
+  animation-delay: 120ms;
+}
+
+.card:nth-child(5) {
+  animation-delay: 160ms;
+}
+
+.card:nth-child(6) {
+  animation-delay: 200ms;
+}
+
+.card:nth-child(7) {
+  animation-delay: 240ms;
+}
+
+.card-wide {
+  grid-column: 1 / -1;
+}
+
+h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.08rem;
+}
+
+.lanes {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.6rem;
+}
+
+.lane {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 0.55rem;
+  background: rgba(255, 255, 255, 0.55);
+}
+
+.lane h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.9rem;
+  color: var(--accent);
+}
+
+.node {
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  padding: 0.42rem;
+  margin-bottom: 0.42rem;
+  background: #fffef9;
+}
+
+.node .label {
+  font-weight: 700;
+  font-size: 0.88rem;
+}
+
+.node .meta {
+  color: var(--muted);
+  font-size: 0.77rem;
+}
+
+.edge-flow {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.edge-chip {
+  border: 1px dashed rgba(0, 0, 0, 0.18);
+  border-radius: 999px;
+  padding: 0.27rem 0.55rem;
+  font-size: 0.76rem;
+  background: rgba(255, 255, 255, 0.65);
+}
+
+.kv-list {
+  display: grid;
+  gap: 0.38rem;
+}
+
+.kv-row {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.42rem 0.52rem;
+  background: rgba(255, 255, 255, 0.56);
+}
+
+.kv-row .k {
+  display: block;
+  font-family: "IBM Plex Mono", "Menlo", "Consolas", monospace;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.kv-row .v {
+  display: block;
+  margin-top: 0.12rem;
+  font-size: 0.85rem;
+  overflow-wrap: anywhere;
+}
+
+.health-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.6rem;
+}
+
+.health-box {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.6rem;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.ok {
+  color: #0d6a2f;
+  font-weight: 700;
+}
+
+.warn {
+  color: #87410f;
+  font-weight: 700;
+}
+
+@keyframes revealUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 860px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .card-wide {
+    grid-column: auto;
+  }
+}

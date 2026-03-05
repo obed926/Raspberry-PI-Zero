@@ -1,0 +1,164 @@
+version: 1
+updated_on: "2026-02-15"
+
+layout:
+  style: hierarchy
+  root_node: ceo_human
+  lanes:
+    - lane_id: leadership
+      label: Leadership
+    - lane_id: orchestration
+      label: Orchestration
+    - lane_id: team_pm
+      label: Team PMs
+    - lane_id: quality
+      label: Quality Gates
+    - lane_id: execution
+      label: Execution
+
+nodes:
+  - node_id: ceo_human
+    label: CEO (Human)
+    lane_id: leadership
+    node_type: human
+    permissions: advisory
+    model: null
+    max_turns: null
+    skill_path: null
+    prompt_sources: []
+
+  - node_id: orchestrator_pm
+    label: Orchestrator PM
+    lane_id: orchestration
+    node_type: pm_hub
+    permissions: plan
+    model: sonnet
+    max_turns: 6
+    skill_path: .claude/skills/orchestrator-pm/SKILL.md
+    prompt_sources:
+      - .claude/skills/master-prompter/references/prompt-templates.md
+      - .claude/skills/master-prompter/references/prompt-quality-gate.md
+
+  - node_id: router_pm
+    label: Router PM (Scale Mode)
+    lane_id: orchestration
+    node_type: pm_router
+    permissions: plan
+    model: sonnet
+    max_turns: 6
+    skill_path: .claude/agents/router-pm.md
+    prompt_sources:
+      - routing/pm-dispatch-contract.md
+
+  - node_id: domain_pm
+    label: Domain PM
+    lane_id: team_pm
+    node_type: pm_team
+    permissions: plan
+    model: sonnet
+    max_turns: 6
+    skill_path: .claude/agents/domain-pm.md
+    prompt_sources:
+      - routing/pm-dispatch-contract.md
+
+  - node_id: platform_pm
+    label: Platform PM
+    lane_id: team_pm
+    node_type: pm_team
+    permissions: plan
+    model: sonnet
+    max_turns: 6
+    skill_path: .claude/agents/platform-pm.md
+    prompt_sources:
+      - routing/pm-dispatch-contract.md
+
+  - node_id: ops_pm
+    label: Ops PM
+    lane_id: team_pm
+    node_type: pm_team
+    permissions: plan
+    model: sonnet
+    max_turns: 6
+    skill_path: .claude/agents/ops-pm.md
+    prompt_sources:
+      - routing/pm-dispatch-contract.md
+
+  - node_id: qa
+    label: QA Gate
+    lane_id: quality
+    node_type: quality_gate
+    permissions: plan
+    model: sonnet
+    max_turns: 6
+    skill_path: .claude/skills/qa/SKILL.md
+    prompt_sources:
+      - .claude/skills/master-prompter/references/review-routing-matrix.md
+      - .claude/skills/master-prompter/references/review-report-schema.md
+
+  - node_id: specialist_auditor
+    label: Specialist Auditor
+    lane_id: quality
+    node_type: strategic_gate
+    permissions: plan
+    model: sonnet
+    max_turns: 6
+    skill_path: .claude/skills/specialist-auditor/SKILL.md
+    prompt_sources:
+      - .claude/skills/master-prompter/references/review-routing-matrix.md
+      - .claude/skills/master-prompter/references/review-report-schema.md
+
+  - node_id: worker_exec
+    label: Worker Exec
+    lane_id: execution
+    node_type: execution
+    permissions: acceptEdits
+    model: sonnet
+    max_turns: 12
+    skill_path: .claude/agents/worker-exec.md
+    prompt_sources:
+      - .claude/skills/worker/SKILL.md
+
+edges:
+  - from: ceo_human
+    to: orchestrator_pm
+    relation: directive
+  - from: orchestrator_pm
+    to: domain_pm
+    relation: routes_when_matched
+  - from: orchestrator_pm
+    to: platform_pm
+    relation: routes_when_matched
+  - from: orchestrator_pm
+    to: ops_pm
+    relation: routes_when_matched
+  - from: router_pm
+    to: domain_pm
+    relation: routes_when_scale_mode
+  - from: router_pm
+    to: platform_pm
+    relation: routes_when_scale_mode
+  - from: router_pm
+    to: ops_pm
+    relation: routes_when_scale_mode
+  - from: domain_pm
+    to: worker_exec
+    relation: delegates_execution
+  - from: platform_pm
+    to: worker_exec
+    relation: delegates_execution
+  - from: worker_exec
+    to: qa
+    relation: submits_for_gate
+  - from: qa
+    to: specialist_auditor
+    relation: sequential_gate
+  - from: specialist_auditor
+    to: orchestrator_pm
+    relation: returns_for_delivery
+
+validation:
+  require_all_active_agents_present: true
+  require_existing_skill_paths: true
+  require_existing_prompt_sources: true
+  require_quality_gate_chain: true
+  require_scope_policy_path: .claude/scope.json
