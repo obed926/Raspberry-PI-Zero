@@ -1,0 +1,189 @@
+tools:
+  - tool_id: master-prompter
+    category: orchestration
+    tags: [pm, review]
+    owner: orchestrator_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: manual PM brief + objective-only dispatch
+    approved_for:
+      - full_repo_audits
+      - multi_lens_prompt_dispatch
+    do_not_use_for:
+      - direct execution of implementation tasks
+    not_for:
+      - direct execution of implementation tasks
+
+  - tool_id: worker
+    category: execution
+    tags: [implementation]
+    owner: platform_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: scoped manual implementation by assigned engineer
+    approved_for:
+      - scoped implementation tasks
+    do_not_use_for:
+      - bypassing QA and specialist gates
+    not_for:
+      - bypassing QA and specialist gates
+
+  - tool_id: qa
+    category: quality
+    tags: [qa, review]
+    owner: ops_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: manual QA checklist and replay validation
+    approved_for:
+      - deliverable verification
+    do_not_use_for:
+      - strategy sign-off without specialist review
+    not_for:
+      - strategy sign-off without specialist review
+
+  - tool_id: github
+    category: mcp
+    tags: [dev, automation, repo]
+    owner: platform_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: local git + GitHub web UI
+    approved_for:
+      - issue and PR context retrieval
+      - repo state operations through approved workflows
+    do_not_use_for:
+      - bypassing branch protections or quality gates
+    not_for:
+      - bypassing branch protections or quality gates
+
+  - tool_id: chrome_devtools
+    category: mcp
+    tags: [dev, browser, qa]
+    owner: platform_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: local reproducer notes in deliverables
+    approved_for:
+      - browser debugging
+      - flow diagnosis and reproducibility
+    do_not_use_for:
+      - source of truth business metrics
+    not_for:
+      - source of truth business metrics
+
+  - tool_id: playwright
+    category: mcp
+    tags: [qa, dev, browser]
+    owner: platform_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: existing Playwright test reports
+    approved_for:
+      - deterministic browser test execution
+      - E2E validation and regression checks
+    do_not_use_for:
+      - ranking or analytics truth
+    not_for:
+      - ranking or analytics truth
+
+  - tool_id: gsc
+    category: mcp
+    tags: [seo, analytics]
+    owner: domain_pm
+    data_sensitivity_tiers: [public, internal]
+    fallback_source: deliverables exports
+    approved_for:
+      - search visibility and indexing diagnostics
+    do_not_use_for:
+      - conversion or revenue attribution
+    not_for:
+      - conversion or revenue attribution
+
+  - tool_id: ga4
+    category: mcp
+    tags: [analytics, growth]
+    owner: domain_pm
+    data_sensitivity_tiers: [internal, restricted]
+    fallback_source: scheduled GA4 export
+    approved_for:
+      - traffic and conversion trend diagnostics
+    do_not_use_for:
+      - indexing and crawl diagnostics
+    not_for:
+      - indexing and crawl diagnostics
+
+  - tool_id: semrush
+    category: mcp
+    tags: [seo, marketing, research]
+    owner: domain_pm
+    data_sensitivity_tiers: [public, internal]
+    fallback_source: stored benchmark report
+    approved_for:
+      - SERP, keyword, and competitor research
+    do_not_use_for:
+      - first-party revenue truth
+    not_for:
+      - first-party revenue truth
+
+  - tool_id: gemini_assets
+    category: creative
+    tags: [content, marketing, assets]
+    owner: domain_pm
+    data_sensitivity_tiers: [public, internal]
+    fallback_source: manual generation workflow
+    approved_for:
+      - image and video asset generation workflows
+    do_not_use_for:
+      - final production typography rendering
+    not_for:
+      - final production typography rendering
+
+  - tool_id: promptfoo
+    category: evaluation
+    tags: [qa, security, evals]
+    owner: ops_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: manual regression checklist and red-team test notes
+    approved_for:
+      - prompt and agent regression evaluation
+      - adversarial testing and policy checks
+    do_not_use_for:
+      - direct production serving
+    not_for:
+      - direct production serving
+
+  - tool_id: langfuse
+    category: observability
+    tags: [monitoring, evals, analytics]
+    owner: ops_pm
+    data_sensitivity_tiers: [internal, restricted]
+    fallback_source: application logs + metric exports
+    approved_for:
+      - runtime tracing and evaluation telemetry
+    do_not_use_for:
+      - replacing primary product analytics
+    not_for:
+      - replacing primary product analytics
+
+  - tool_id: mcp_gateway
+    category: infra
+    tags: [mcp, security, ops]
+    owner: ops_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: direct MCP server configuration per integration
+    approved_for:
+      - multi-MCP routing and policy boundaries
+    do_not_use_for:
+      - single-MCP projects with simple needs
+    not_for:
+      - single-MCP projects with simple needs
+
+  - tool_id: browserbase
+    category: mcp
+    tags: [browser, qa, automation, managed]
+    owner: platform_pm
+    data_sensitivity_tiers: [public, internal, restricted]
+    fallback_source: local Playwright or Chrome DevTools execution
+    approved_for:
+      - managed cloud browser sessions
+      - remote browser automation at scale
+      - reproducible browser QA where local runs are unstable
+    do_not_use_for:
+      - replacing deterministic local testing in small projects
+    not_for:
+      - replacing deterministic local testing in small projects

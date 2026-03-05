@@ -1,0 +1,45 @@
+hooks:
+  - hook_id: session_start_context
+    trigger: SessionStart
+    purpose: verify memory and tracker presence before work starts
+    mandatory: true
+
+  - hook_id: pretool_bash_guard
+    trigger: PreToolUse(Bash)
+    purpose: command-only enforcement for destructive shell blocks, execution task-state checks, and push tracking protocol
+    mandatory: true
+
+  - hook_id: pretool_edit_guard
+    trigger: PreToolUse(Edit|Write|MultiEdit)
+    purpose: enforce scope policy via .claude/scope.json, require in-progress task row, and protect governance files by default
+    mandatory: true
+
+  - hook_id: check_scope
+    trigger: called_by_pretool_edit_guard
+    purpose: block Edit/Write targets outside .claude/scope.json allowlist and denylist
+    mandatory: true
+
+  - hook_id: pretool_task_dispatch_guard
+    trigger: PreToolUse(Task)
+    purpose: enforce objective-only PM dispatch and block worker-level command/checklist instructions
+    mandatory: true
+
+  - hook_id: stop_dirty_worktree_notice
+    trigger: Stop
+    purpose: command-only warning on dirty worktree (no prompt-based model review to reduce token burn)
+    mandatory: true
+
+  - hook_id: git_safety
+    trigger: pre_commit_or_pre_push
+    purpose: block destructive git actions and unsafe pushes
+    mandatory: true
+
+  - hook_id: secret_guard
+    trigger: pre_commit
+    purpose: detect secrets or credentials before commit
+    mandatory: true
+
+  - hook_id: schema_gate
+    trigger: before_deliverable_publish
+    purpose: enforce report schema and required metadata
+    mandatory: false

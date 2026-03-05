@@ -1,0 +1,40 @@
+models:
+  - model_id: primary
+    provider: anthropic
+    model_name: claude-sonnet-4-5-20250929
+    approved_for:
+      - pm_orchestration
+      - routine_execution
+      - qa_checks
+      - research
+    constraints:
+      - default_for_most_tasks
+      - balanced_cost_quality
+    fallback_model_id: fast
+    status: active
+
+  - model_id: fallback
+    provider: anthropic
+    model_name: claude-opus-4-6
+    approved_for:
+      - complex_analysis
+      - strategic_review
+      - high_stakes_decisions
+    constraints:
+      - highest_cost_tier
+      - use_only_when_sonnet_insufficient
+    fallback_model_id: ""
+    status: active
+
+  - model_id: fast
+    provider: anthropic
+    model_name: claude-haiku-4-5-20251001
+    approved_for:
+      - classification
+      - simple_qa_pass_fail
+      - hook_evaluations
+    constraints:
+      - lowest_cost
+      - use_for_simple_deterministic_checks
+    fallback_model_id: fallback
+    status: active

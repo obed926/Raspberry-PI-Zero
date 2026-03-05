@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -fr *)",
+      "Bash(sudo *)",
+      "Bash(git push --force*)",
+      "Bash(git push *--force*)",
+      "Bash(git push -f*)",
+      "Bash(git push * -f*)",
+      "Bash(git reset --hard*)",
+      "Bash(curl *|bash*)",
+      "Bash(wget *|bash*)",
+      "Read(.env)",
+      "Read(.env.*)",
+      "Read(*credentials*)",
+      "Edit(~/.bashrc)",
+      "Edit(~/.zshrc)",
+      "Edit(~/.ssh/**)",
+      "Read(~/.ssh/**)",
+      "Read(~/.aws/**)",
+      "Read(~/.config/gh/**)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '-- Session Startup --'; if [ -f memory.md ]; then echo 'memory.md: found'; else echo 'WARNING: memory.md missing - you are flying blind' >&2; fi; if [ -f ops-tracker.md ]; then echo 'ops-tracker.md: found'; else echo 'WARNING: ops-tracker.md missing - no task tracking' >&2; fi; echo 'Read memory.md and ops-tracker.md before doing anything else.'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pretool-bash-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pretool-edit-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pretool-edit-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pretool-edit-guard.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/pretool-task-dispatch-guard.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "DIRTY=$(git status --porcelain 2>/dev/null | wc -l | tr -d ' '); if [ \"$DIRTY\" -gt 0 ]; then echo \"WARNING: $DIRTY uncommitted file(s). Commit your work - if the session crashes, unsaved changes are lost.\"; fi"
+          }
+        ]
+      }
+    ]
+  },
+  "cleanupPeriodDays": 14,
+  "model": "sonnet",
+  "env": {
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+    "ENABLE_TOOL_SEARCH": "auto:5",
+    "MAX_THINKING_TOKENS": "8000",
+    "MAX_MCP_OUTPUT_TOKENS": "12000"
+  }
+}

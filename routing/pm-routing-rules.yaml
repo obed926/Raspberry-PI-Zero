@@ -1,0 +1,35 @@
+routing:
+  default_owner: orchestrator_pm
+  router_mode_entrypoint: router_pm
+  dispatch_contract: routing/pm-dispatch-contract.md
+  dispatch_requirements:
+    - objective_not_steps
+    - include_delegation_protocol_reminder
+    - no_worker_level_commands
+
+  rules:
+    - id: domain_requests
+      when_query_has:
+        - seo
+        - marketing
+        - leads
+      owner_pm: domain_pm
+
+    - id: platform_requests
+      when_query_has:
+        - infrastructure
+        - architecture
+        - deployment
+        - reliability
+      owner_pm: platform_pm
+
+    - id: operations_requests
+      when_query_has:
+        - qa
+        - audit
+        - reporting
+      owner_pm: ops_pm
+
+  fallback:
+    owner_pm: router_pm
+    behavior: ask_clarifying_question_then_assign

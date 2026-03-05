@@ -1,0 +1,140 @@
+mcps:
+  - integration_id: github
+    name: GitHub MCP Server
+    owner: platform_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+      - restricted
+    approved_use_cases:
+      - repository context and metadata
+      - issue and PR operations
+      - workflow-linked engineering execution
+    do_not_use_for:
+      - bypassing branch protections or required reviews
+    freshness_expectation: per_operation
+    fallback_source: local git + GitHub web UI
+    status: optional
+
+  - integration_id: gsc
+    name: GSC MCP
+    owner: domain_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+    approved_use_cases:
+      - query and page performance
+      - indexing checks
+    do_not_use_for:
+      - conversion attribution
+    freshness_expectation: daily_or_on_demand
+    fallback_source: deliverables exports
+    status: optional
+
+  - integration_id: ga4
+    name: GA4 MCP
+    owner: domain_pm
+    data_sensitivity_tiers:
+      - internal
+      - restricted
+    approved_use_cases:
+      - traffic and conversion trend checks
+    do_not_use_for:
+      - URL indexing diagnostics
+    freshness_expectation: near_real_time
+    fallback_source: scheduled GA4 export
+    status: optional
+
+  - integration_id: semrush
+    name: Semrush MCP
+    owner: domain_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+    approved_use_cases:
+      - SERP and competitor research
+    do_not_use_for:
+      - first party conversion truth
+    freshness_expectation: weekly
+    fallback_source: stored benchmark report
+    status: optional
+
+  - integration_id: chrome_devtools
+    name: Chrome DevTools MCP
+    owner: platform_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+      - restricted
+    approved_use_cases:
+      - browser debugging
+      - repro steps
+      - UI flow diagnosis
+    do_not_use_for:
+      - final SEO truth metrics
+    freshness_expectation: on_demand
+    fallback_source: local reproducer notes in deliverables
+    status: optional
+
+  - integration_id: playwright
+    name: Playwright MCP
+    owner: platform_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+      - restricted
+    approved_use_cases:
+      - deterministic browser flows
+      - E2E validation steps
+    do_not_use_for:
+      - search ranking or analytics truth
+    freshness_expectation: per_test_run
+    fallback_source: existing Playwright test reports
+    status: optional
+
+  - integration_id: gemini_assets
+    name: Gemini Asset API or MCP
+    owner: domain_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+    approved_use_cases:
+      - image and video generation workflows
+    do_not_use_for:
+      - final typography layout in production creatives
+    freshness_expectation: per_campaign
+    fallback_source: manual generation workflow
+    status: optional
+
+  - integration_id: mcp_gateway
+    name: Docker MCP Gateway
+    owner: ops_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+      - restricted
+    approved_use_cases:
+      - multi-server MCP routing
+      - centralized auth and policy controls
+    do_not_use_for:
+      - single-project simple setups without policy complexity
+    freshness_expectation: on_change
+    fallback_source: direct MCP server configuration per integration
+    status: optional
+
+  - integration_id: browserbase
+    name: Browserbase MCP
+    owner: platform_pm
+    data_sensitivity_tiers:
+      - public
+      - internal
+      - restricted
+    approved_use_cases:
+      - managed cloud browser sessions
+      - remote browser QA and automation
+      - reproducible browser runs across environments
+    do_not_use_for:
+      - replacing local deterministic tests where local is sufficient
+    freshness_expectation: per_test_run
+    fallback_source: local Playwright or Chrome DevTools execution
+    status: optional

@@ -1,0 +1,27 @@
+{
+  "enforce": true,
+  "allow": [
+    "CLAUDE.md",
+    "AGENTS.md",
+    "README.md",
+    "memory.md",
+    "ops-tracker.md",
+    "signals-intake.md",
+    "mcp-registry.md",
+    "docs/**",
+    "registry/**",
+    "routing/**",
+    "knowledge/**",
+    "evaluations/**",
+    "deliverables/**",
+    "scripts/**",
+    ".github/**",
+    ".claude/**",
+    "data/**"
+  ],
+  "deny": [
+    ".git/**",
+    "../**",
+    "**/../**"
+  ]
+}

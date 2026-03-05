@@ -1,0 +1,96 @@
+name: Project Quality
+
+on:
+  pull_request:
+  push:
+    branches: ["main", "master"]
+
+jobs:
+  shell-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint shell scripts and hooks
+        run: bash -n scripts/*.sh .claude/hooks/*.sh
+
+  doc-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate documentation link integrity
+        run: ./scripts/validate-doc-integrity.sh
+      - name: Validate bootstrap file-size budgets
+        run: ./scripts/validate-bootstrap-size.sh
+
+  agent-log-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate agent run log schema
+        run: ./scripts/validate-agent-log.sh
+
+  bash-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Bash guard behavior
+        run: ./scripts/validate-bash-guard.sh
+
+  agent-log-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Append and summarize one smoke entry
+        run: |
+          ./scripts/log-agent-run.sh --agent-id orchestrator_pm --task-id T-CI --phase execution --verdict info --notes "ci smoke"
+          ./scripts/validate-agent-log.sh
+          ./scripts/agent-log-summary.sh
+
+  pm-dispatch-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate PM dispatch guard behavior
+        run: ./scripts/validate-pm-dispatch-guard.sh
+
+  edit-scope-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Edit/Write scope guard behavior
+        run: ./scripts/validate-edit-scope-guard.sh
+
+  router-compliance-replay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replay router compliance scenarios
+        run: ./scripts/validate-router-compliance-replay.sh
+
+  opus-escalation-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate Opus escalation gate behavior
+        run: ./scripts/validate-opus-escalation-gate.sh
+
+  registry-governance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate registry governance fields
+        run: ./scripts/validate-registry-governance.sh
+
+  command-center-map-sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate command center map/diagram sync
+        run: ./scripts/validate-command-center-map-sync.sh
+
+  spec-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate spec-first gate
+        run: ./scripts/validate-spec-gate.sh

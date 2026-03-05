@@ -1,0 +1,189 @@
+profiles:
+  - profile_id: seo_agency
+    label: SEO / Growth Agency
+    use_when:
+      - seo
+      - content strategy
+      - organic growth
+      - lead generation
+    default_models:
+      primary: primary
+      fallback: fallback
+    required_tools:
+      - master-prompter
+      - worker
+      - qa
+    required_mcps:
+      - gsc
+      - ga4
+      - semrush
+      - chrome_devtools
+      - playwright
+    optional_tools:
+      - promptfoo
+      - langfuse
+      - gemini_assets
+      - browserbase
+    do_not_default:
+      - mcp_gateway
+    success_checks:
+      - indexation and query diagnostics are reproducible
+      - analytics claims include source and timestamp
+      - browser issues include deterministic repro evidence
+
+  - profile_id: saas_product
+    label: SaaS Product / Web App
+    use_when:
+      - product development
+      - feature delivery
+      - reliability and deployment
+      - bug fixing
+    default_models:
+      primary: primary
+      fallback: fallback
+    required_tools:
+      - master-prompter
+      - worker
+      - qa
+    required_mcps:
+      - github
+      - chrome_devtools
+      - playwright
+    optional_tools:
+      - promptfoo
+      - langfuse
+      - ga4
+      - mcp_gateway
+      - browserbase
+    do_not_default:
+      - semrush
+      - gsc
+    success_checks:
+      - implementation and PR context stay linked
+      - UI regressions are covered by deterministic tests
+      - release risk is reviewed by QA before merge
+
+  - profile_id: content_media
+    label: Content / Media Production
+    use_when:
+      - content pipeline
+      - creative production
+      - distribution packaging
+      - campaign execution
+    default_models:
+      primary: primary
+      fallback: fallback
+    required_tools:
+      - master-prompter
+      - worker
+      - qa
+    required_mcps:
+      - ga4
+    optional_tools:
+      - gsc
+      - semrush
+      - gemini_assets
+      - promptfoo
+      - browserbase
+    do_not_default:
+      - github
+      - mcp_gateway
+    success_checks:
+      - content claims are traceable to source snapshots
+      - asset generation follows overlay-first SOP
+      - channel performance checks are timestamped
+
+  - profile_id: ecommerce
+    label: E-commerce / Revenue Ops
+    use_when:
+      - catalog and merchandising
+      - conversion optimization
+      - campaign and landing page performance
+      - checkout reliability
+    default_models:
+      primary: primary
+      fallback: fallback
+    required_tools:
+      - master-prompter
+      - worker
+      - qa
+    required_mcps:
+      - ga4
+      - chrome_devtools
+      - playwright
+    optional_tools:
+      - gsc
+      - semrush
+      - github
+      - promptfoo
+      - langfuse
+      - browserbase
+    do_not_default:
+      - mcp_gateway
+    success_checks:
+      - conversion-impact claims map to analytics evidence
+      - critical checkout flows have deterministic browser validation
+      - SEO and paid acquisition diagnostics remain separated from revenue truth
+
+  - profile_id: executive_ops_optional
+    label: Executive Ops (Optional)
+    use_when:
+      - executive workflow orchestration
+      - personal crm and relationship hygiene
+      - cross-channel inbox triage
+      - briefing and decision support
+    default_models:
+      primary: primary
+      fallback: fallback
+    required_tools:
+      - master-prompter
+      - worker
+      - qa
+    required_mcps:
+      - google_calendar
+      - gmail
+    optional_tools:
+      - slack
+      - github
+      - browserbase
+      - promptfoo
+      - langfuse
+    do_not_default:
+      - semrush
+      - gsc
+      - ga4
+    success_checks:
+      - no outbound message is sent without explicit approval
+      - triage outputs identify skipped/unavailable channels explicitly
+      - daily and weekly briefs remain source-attributed and goal-aligned
+      - relationship and task queues keep `my_actions` separate from `waiting_on_others`
+
+  - profile_id: branding_assets_optional
+    label: Branding Assets (Optional)
+    use_when:
+      - brand identity exploration
+      - logo and visual direction work
+      - campaign asset generation
+      - design system bootstrapping
+    default_models:
+      primary: primary
+      fallback: fallback
+    required_tools:
+      - master-prompter
+      - worker
+      - qa
+    required_mcps:
+      - gemini_assets
+    optional_tools:
+      - promptfoo
+      - langfuse
+      - browserbase
+    do_not_default:
+      - gsc
+      - semrush
+      - mcp_gateway
+    success_checks:
+      - visual direction is anchored by references and mood board artifacts
+      - design tokens are documented before full-page/component production
+      - generated assets reserve usable negative space for post-production text overlays
+      - brand QA verifies consistency, readability, and anti-generic style constraints

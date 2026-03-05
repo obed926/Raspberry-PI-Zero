@@ -1,0 +1,15 @@
+# OpenClaw Source Intake
+
+Purpose: track OpenClaw ecosystem findings as a source dossier (not default tool stack).
+
+| Date | Source | Tags | Claim | Verification | Status | Notes |
+|------|--------|------|-------|--------------|--------|-------|
+| 2026-02-15 | https://github.com/openclaw/openclaw | openclaw, agent-runtime, extension-ecosystem | Open-source CLI/runtime with skills, hooks, and plugin/extension architecture | verified-primary | active-reference | Keep separate from default tool shortlist until project-specific fit is proven |
+| 2026-02-15 | https://docs.openclaw.ai/ | openclaw, docs, runtime | Official docs define workflow, slash commands, tools, MCP support, and hooks | verified-primary | active-reference | Use for architecture comparison and future integrations |
+| 2026-02-15 | https://x.com/kavinbm/status/2023075294182092884?s=42 | openclaw, social, trend-signal | Social signal about OpenClaw direction/features | unverified | pending-verification | Source not retrievable in current environment |
+| 2026-02-15 | https://x.com/kavinbm/status/2023031683826508129?s=42 | openclaw, social, trend-signal | Social signal about OpenClaw direction/features | unverified | pending-verification | Source not retrievable in current environment |
+| 2026-02-18 | User intake: OpenClaw Architecture & Implementation Guide (thread) | openclaw, architecture, crm, rag, security, automation | Detailed implementation blueprint spanning CRM, transcript actions, RAG ingestion, advisory council, security council, and backup/health schedules | unverified-secondary | active-reference | Captured in `openclaw/openclaw-architecture-implementation-guide-intake.md`; promote items only after primary-source validation |
+| 2026-02-18 | User intake: DigitalOcean OpenClaw email note | openclaw, deployment, workflow, cron, webhooks, cost | Practical deployment/workflow guidance for always-on operation, chat workflows, and webhook triggers | unverified-secondary | active-reference | Captured in `openclaw/openclaw-do-email-intake-2026-02-18.md`; validate against first-party docs before promotion |
+| 2026-02-23 | https://docs.openclaw.ai/gateway/security | openclaw, security, gateway, hardening | Official gateway security guidance for auth and access controls | verified-primary | active-reference | Use as primary reference for secure exposure patterns; do not override with social/blog posts |
+| 2026-02-23 | https://docs.openclaw.ai/cli/security | openclaw, security, audit, runtime | Official CLI security-audit guidance and recommended checks | verified-primary | active-reference | Prefer deterministic audit checks before enabling unattended automation |
+| 2026-02-23 | https://www.johann.fyi/openclaw-security-101 | openclaw, security, server-hardening, operations | Practical self-hosting checklist for hardening an OpenClaw deployment | verified-secondary | watchlist | Useful operator checklist, but treat as secondary to official docs when defaults/ports/config details conflict |

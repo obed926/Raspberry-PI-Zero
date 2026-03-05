@@ -1,0 +1,223 @@
+agents:
+  - agent_id: orchestrator_pm
+    role: hub_pm
+    status: active
+    owns:
+      - routing
+      - quality_gates
+      - final_delivery
+    does_not_do:
+      - direct_specialist_execution
+    triggers:
+      - assign task
+      - project status
+      - route work
+      - full repo audit
+    inputs:
+      - CEO directive
+      - memory.md
+      - ops-tracker.md
+      - routing/pm-routing-rules.yaml
+    outputs:
+      - delegated briefs
+      - merged action plans
+    tools:
+      - master-prompter
+      - qa
+      - specialist-auditor
+    hooks:
+      - pre-edit safety checks
+    owner: PM
+    last_reviewed: "2026-02-15"
+
+  - agent_id: router_pm
+    role: dispatch_router
+    status: template
+    owns:
+      - query_classification
+      - PM_assignment
+      - cross_team_task_split
+    does_not_do:
+      - direct_execution
+      - source_file_modification
+    triggers:
+      - route this
+      - which team owns this
+      - cross-team request
+    inputs:
+      - CEO directive
+      - routing context provided by orchestrator
+      - active PM roster from registry
+    outputs:
+      - owner_pm_assignment
+      - dependency_map
+      - objective_based_pm_brief
+    tools:
+      - Task
+    hooks:
+      - pretool_edit_guard
+    owner: PM
+    last_reviewed: "2026-02-15"
+
+  - agent_id: domain_pm
+    role: team_pm
+    status: template
+    owns:
+      - domain_strategy
+      - content
+      - research
+    does_not_do:
+      - direct_execution
+    triggers:
+      - seo
+      - marketing
+      - leads
+      - content strategy
+    inputs:
+      - router_directive
+      - memory.md
+    outputs:
+      - verified_deliverables
+    tools:
+      - worker-exec
+      - qa
+      - specialist-auditor
+    hooks: []
+    owner: Router
+    last_reviewed: "2026-02-15"
+
+  - agent_id: platform_pm
+    role: team_pm
+    status: template
+    owns:
+      - architecture
+      - code
+      - deployment
+      - infrastructure
+    does_not_do:
+      - direct_execution
+    triggers:
+      - infrastructure
+      - architecture
+      - deployment
+      - reliability
+    inputs:
+      - router_directive
+      - memory.md
+    outputs:
+      - verified_deliverables
+    tools:
+      - worker-exec
+      - qa
+      - specialist-auditor
+    hooks: []
+    owner: Router
+    last_reviewed: "2026-02-15"
+
+  - agent_id: ops_pm
+    role: team_pm
+    status: template
+    owns:
+      - quality_audits
+      - monitoring
+      - cross_team_reviews
+    does_not_do:
+      - modifying_source_code
+    triggers:
+      - qa
+      - audit
+      - reporting
+    inputs:
+      - deliverable_for_review
+      - memory.md
+    outputs:
+      - pass_fail_verdict
+      - findings_report
+    tools:
+      - qa
+      - specialist-auditor
+    hooks: []
+    owner: Router
+    last_reviewed: "2026-02-15"
+
+  - agent_id: worker_exec
+    role: execution_worker
+    status: template
+    owns:
+      - implementation
+      - command_execution
+      - scoped_file_changes
+    does_not_do:
+      - direct_CEO_planning
+      - final_quality_signoff
+    triggers:
+      - execute task
+      - implement fix
+      - apply changes
+    inputs:
+      - PM_assigned_subtask
+      - task_id
+      - acceptance_criteria
+    outputs:
+      - implementation_diff
+      - validation_results
+    tools:
+      - Read
+      - Edit
+      - MultiEdit
+      - Write
+      - Bash
+      - Glob
+      - Grep
+    hooks:
+      - pretool_edit_guard
+    owner: Team PM
+    last_reviewed: "2026-02-15"
+
+  - agent_id: qa
+    role: quality_gate
+    status: active
+    owns:
+      - factual checks
+      - completeness checks
+      - standards validation
+    does_not_do:
+      - direct rewriting without PM route
+    triggers:
+      - qa audit
+      - verify deliverable
+    inputs:
+      - deliverable
+      - assignment brief
+    outputs:
+      - pass_fail verdict
+      - required fixes
+    tools: []
+    hooks: []
+    owner: PM
+    last_reviewed: ""
+
+  - agent_id: specialist_auditor
+    role: strategic_gate
+    status: active
+    owns:
+      - blind spot detection
+      - strategic challenge
+      - enhancement proposals
+    does_not_do:
+      - bypassing QA
+    triggers:
+      - fresh eyes
+      - what are we missing
+      - strategic review
+    inputs:
+      - QA-pass deliverable
+      - project context
+    outputs:
+      - critical findings
+      - enhancements
+      - residual risks
+    tools: []
+    hooks: []
+    owner: PM
+    last_reviewed: ""

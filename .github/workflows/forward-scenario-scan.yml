@@ -1,0 +1,22 @@
+name: Forward Scenario Scan
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+
+jobs:
+  generate_scan_template:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate forward scenario scan template
+        run: |
+          DATE_UTC="$(date -u +%Y-%m-%d)"
+          OUT="reports/${DATE_UTC}_forward-scenario-scan_ci-${GITHUB_RUN_ID}.md"
+          ./scripts/create-forward-scan-report.sh --date "$DATE_UTC" --out "$OUT"
+      - name: Upload scan template artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forward-scenario-scan-${{ github.run_id }}
+          path: reports/*_forward-scenario-scan_ci-*.md

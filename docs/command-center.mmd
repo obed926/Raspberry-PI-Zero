@@ -1,0 +1,39 @@
+%% Auto-generated from registry/command-center-map.yaml
+flowchart TD
+
+  subgraph leadership["Leadership"]
+    ceo_human["CEO (Human)"]
+  end
+
+  subgraph orchestration["Orchestration"]
+    orchestrator_pm["Orchestrator PM"]
+    router_pm["Router PM (Scale Mode)"]
+  end
+
+  subgraph team_pm["Team PMs"]
+    domain_pm["Domain PM"]
+    platform_pm["Platform PM"]
+    ops_pm["Ops PM"]
+  end
+
+  subgraph quality["Quality Gates"]
+    qa["QA Gate"]
+    specialist_auditor["Specialist Auditor"]
+  end
+
+  subgraph execution["Execution"]
+    worker_exec["Worker Exec"]
+  end
+
+  ceo_human -->|"directive"| orchestrator_pm
+  orchestrator_pm -->|"routes when matched"| domain_pm
+  orchestrator_pm -->|"routes when matched"| platform_pm
+  orchestrator_pm -->|"routes when matched"| ops_pm
+  router_pm -->|"routes when scale mode"| domain_pm
+  router_pm -->|"routes when scale mode"| platform_pm
+  router_pm -->|"routes when scale mode"| ops_pm
+  domain_pm -->|"delegates execution"| worker_exec
+  platform_pm -->|"delegates execution"| worker_exec
+  worker_exec -->|"submits for gate"| qa
+  qa -->|"sequential gate"| specialist_auditor
+  specialist_auditor -->|"returns for delivery"| orchestrator_pm
