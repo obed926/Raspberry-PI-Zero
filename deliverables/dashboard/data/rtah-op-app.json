@@ -1,0 +1,32 @@
+{
+  "captured_at": "2026-03-06T00:00:00Z",
+  "source_project_path": "/Users/obed/Desktop/Coding/RTAH-OP-App",
+  "app_name": "RTAH Department Hub",
+  "short_name": "RTAH Hub",
+  "deployment_host": "pi-zero.local",
+  "primary_user": "obed",
+  "app_public_entry": "public/index.html",
+  "live_testing_url": "http://10.0.0.115/rtah-op-live/public/index.html",
+  "testing_public_url": "https://rtah-op-app-testing.vercel.app",
+  "public_url": "https://rtah-op-app.vercel.app",
+  "dashboard_path": "/deliverables/dashboard/",
+  "files_snapshot": {
+    "english_docs_total": 58,
+    "english_pdf_count": 35,
+    "english_docx_count": 20,
+    "icons_count": 23,
+    "public_files_count": 6
+  },
+  "latest_agent_run": {
+    "timestamp_utc": "2026-02-21T15:05:11Z",
+    "task_id": "T-158",
+    "agent_id": "worker_exec",
+    "verdict": "pass",
+    "notes": "Moved Attendants Equipment Available to standalone section after Responsibilities; bumped SW cache to v17"
+  },
+  "highlights": [
+    "Mobile-first department hub with icon-based navigation",
+    "Builds pages from Files/RTAH OP/English source documents",
+    "Supports preview mode and extract/build workflow"
+  ]
+}

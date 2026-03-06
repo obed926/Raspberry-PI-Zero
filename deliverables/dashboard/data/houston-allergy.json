@@ -1,0 +1,57 @@
+{
+  "captured_at_utc": "2026-03-06T05:01:59.455Z",
+  "source_url": "https://www.accuweather.com/en/us/houston/77002/health-activities/351197",
+  "location": "Houston, TX",
+  "summary": {
+    "overall_category": "High",
+    "overall_value": 5,
+    "dominant_trigger": {
+      "name": "Tree Pollen",
+      "value": 5,
+      "category": "High"
+    },
+    "source_index_date_local": "2026-03-05T07:00:00-06:00"
+  },
+  "items": [
+    {
+      "name": "Tree Pollen",
+      "slug": "tree-pollen",
+      "value": 5,
+      "category": "High",
+      "advisory": "The risk of tree pollen symptoms is high. Keep your windows closed and change clothing after returning to the indoors.",
+      "index_date_local": "2026-03-05T07:00:00-06:00"
+    },
+    {
+      "name": "Dust & Dander",
+      "slug": "dust-dander",
+      "value": 4,
+      "category": "High",
+      "advisory": "The risk of dust and dander allergy symptoms is high. Be sure you're vacuuming with a HEPA-approved filter.",
+      "index_date_local": "2026-03-05T07:00:00-06:00"
+    },
+    {
+      "name": "Grass Pollen",
+      "slug": "grass-pollen",
+      "value": 3,
+      "category": "Moderate",
+      "advisory": "The risk of grass pollen symptoms is moderate. Be sure to keep your windows and doors closed.",
+      "index_date_local": "2026-03-05T07:00:00-06:00"
+    },
+    {
+      "name": "Ragweed Pollen",
+      "slug": "ragweed-pollen",
+      "value": 1,
+      "category": "Low",
+      "advisory": "The risk for ragweed pollen symptoms is low.",
+      "index_date_local": "2026-03-05T07:00:00-06:00"
+    },
+    {
+      "name": "Mold",
+      "slug": "mold",
+      "value": 1,
+      "category": "Low",
+      "advisory": "The risk of mold allergy symptoms is low.",
+      "index_date_local": "2026-03-05T07:00:00-06:00"
+    }
+  ]
+}

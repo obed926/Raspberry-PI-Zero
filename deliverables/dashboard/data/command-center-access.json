@@ -1,0 +1,7 @@
+{
+  "local_url": "http://10.0.0.115/deliverables/dashboard/",
+  "public_url": "https://dashboard-five-theta-88.vercel.app",
+  "testing_url": "https://dashboard-26w7t5am2-obed926s-projects.vercel.app",
+  "notes": "Public URL is globally reachable. Use testing_url for latest deployment validation before sharing public_url.",
+  "last_published_utc": "2026-03-06T05:06:00Z"
+}
