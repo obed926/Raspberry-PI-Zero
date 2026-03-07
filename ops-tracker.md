@@ -35,6 +35,12 @@
 | T-023 | Rework weather widget for Houston-first iPhone-style 24-hour + 5-day forecast | worker_exec | [x] | Set Houston as fixed primary weather source, added 24-hour hourly strip + 5-day forecast rows, removed location input, bumped dashboard assets to `main.js?v=20260306i` and `styles.css?v=20260306i`, and deployed to Pi web root. |
 | T-024 | Hide non-weather widgets in Command Center (filters/refresh/snapshot) | worker_exec | [x] | Hidden Filters/Refresh/Snapshot widget boxes via `widget-hidden` class while preserving DOM hooks; bumped CSS cache-bust to `20260306j` and deployed to Pi web root. |
 | T-025 | Add Houston allergy forecast widget and wire Command Center public-access workflow | worker_exec | [x] | Added AccuWeather-backed Houston allergy widget + data updater script, added Command Center Access panel, deployed dashboard updates to Pi, and published globally reachable dashboard at `https://dashboard-five-theta-88.vercel.app`. |
+| T-026 | Refocus Command Center into quick-access daily hub layout | worker_exec | [x] | Added quick-access links panel + configurable `quick-access.json`, kept weather/allergy as daily essentials, moved engineering panels behind toggle, and deployed updated dashboard files to Pi web root. |
+| T-027 | Add JW section with 2026 Convention quick-open workflow and move Quick Access to bottom | worker_exec | [x] | Added JW section below Daily Essentials with 2026 Convention actions (mobile Drive app deep link, desktop Finder path attempt, copy-path helper), moved Quick Access card to bottom, and deployed updates to Pi web root. |
+| T-028 | Add Contracts Team public-link quick action in JW section | worker_exec | [x] | Added Contracts Team button + visible link row for `https://rtah-op-app.vercel.app` in JW section, then redeployed to Pi and Vercel alias. |
+| T-029 | Add NotebookLM quick link to Contracts Team subsection | worker_exec | [x] | Added NotebookLM button + URL row under Contracts Team, then redeployed to Pi and Vercel alias. |
+| T-030 | Add Contracts subsection chat feature | worker_exec | [x] | Added local persistent Contracts Team chat (send, enter-to-send, clear chat) using browser storage, then redeployed to Pi and Vercel alias. |
+| T-031 | Improve Contracts NotebookLM launch UX for quick testing | worker_exec | [x] | Added prominent Ask NotebookLM button in Contracts Team with popup-open behavior and tab fallback; redeployed to Pi and Vercel alias. |
 
 ## Guardrail Incidents
 

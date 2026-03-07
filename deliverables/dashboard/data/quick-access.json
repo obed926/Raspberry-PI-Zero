@@ -1,0 +1,22 @@
+{
+  "links": [
+    {
+      "label": "Pi Home",
+      "url": "http://10.0.0.115/",
+      "group": "Pi",
+      "note": "Web root on Raspberry Pi."
+    },
+    {
+      "label": "Allergy Source",
+      "url": "https://www.accuweather.com/en/us/houston/77002/health-activities/351197",
+      "group": "Health",
+      "note": "Reference source for allergy data."
+    },
+    {
+      "label": "Open-Meteo Forecast",
+      "url": "https://open-meteo.com/en/docs",
+      "group": "Weather",
+      "note": "Forecast data source docs."
+    }
+  ]
+}

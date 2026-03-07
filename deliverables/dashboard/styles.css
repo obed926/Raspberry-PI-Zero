@@ -97,6 +97,10 @@ h1 {
   max-width: 72ch;
 }
 
+.hero-actions {
+  margin-top: 0.7rem;
+}
+
 .meta-row {
   display: flex;
   gap: 0.52rem;
@@ -166,7 +170,7 @@ h2 {
 
 .widget-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.7rem;
 }
 
@@ -240,6 +244,195 @@ h2 {
 .action-btn:hover {
   transform: translateY(-1px);
   box-shadow: 0 0 0 1px var(--chartreuse-glow), 0 6px 16px rgba(0, 0, 0, 0.32);
+}
+
+.action-btn-lg {
+  padding: 0.56rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.tech-toggle-btn {
+  min-width: 220px;
+}
+
+.quick-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.62rem;
+}
+
+.quick-link-card {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: linear-gradient(165deg, rgba(17, 20, 23, 0.95), rgba(12, 14, 16, 0.95));
+  padding: 0.7rem;
+  display: grid;
+  gap: 0.34rem;
+}
+
+.quick-link-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+
+.quick-link-group {
+  font-size: 0.64rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-weight: 700;
+}
+
+.quick-link-label {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #f0f5f0;
+}
+
+.quick-link-note {
+  font-size: 0.76rem;
+  color: #b9c4ba;
+}
+
+.quick-link-url {
+  color: #d6ff8f;
+  text-decoration-color: rgba(182, 255, 59, 0.7);
+  font-size: 0.78rem;
+  overflow-wrap: anywhere;
+}
+
+.quick-link-url:hover {
+  color: #e7ffc2;
+}
+
+.quick-empty {
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.jw-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.62rem;
+}
+
+.jw-box {
+  border: 1px solid var(--line-soft);
+  border-radius: 12px;
+  background: linear-gradient(165deg, rgba(17, 20, 23, 0.95), rgba(12, 14, 16, 0.95));
+  padding: 0.72rem;
+}
+
+.jw-box h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.92rem;
+  color: var(--chartreuse);
+}
+
+.jw-box p {
+  margin: 0 0 0.56rem;
+  font-size: 0.82rem;
+  color: #c7d1c8;
+}
+
+.jw-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.42rem;
+  margin-bottom: 0.5rem;
+}
+
+.action-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
+.secondary-btn {
+  border-color: #3e474f;
+  background: linear-gradient(140deg, rgba(90, 108, 120, 0.34), rgba(66, 82, 92, 0.16));
+}
+
+.jw-hint {
+  font-size: 0.73rem;
+  color: #b6c3b8;
+  min-height: 1.1rem;
+}
+
+.contracts-chat {
+  margin-top: 0.56rem;
+}
+
+.contracts-chat-shell {
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: #0d1012;
+  padding: 0.56rem;
+}
+
+.contracts-chat-head {
+  font-size: 0.72rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 700;
+}
+
+.contracts-chat-log {
+  margin-top: 0.45rem;
+  max-height: 220px;
+  overflow: auto;
+  display: grid;
+  gap: 0.34rem;
+  padding-right: 0.12rem;
+}
+
+.contracts-chat-row {
+  border: 1px solid #2b3238;
+  border-radius: 8px;
+  padding: 0.42rem;
+  background: #111418;
+}
+
+.contracts-chat-msg {
+  font-size: 0.8rem;
+  color: #edf0ee;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.contracts-chat-time {
+  margin-top: 0.22rem;
+  font-size: 0.66rem;
+  color: #93a09a;
+}
+
+.contracts-chat-empty {
+  font-size: 0.77rem;
+  color: #a8b4ab;
+}
+
+.contracts-chat-input {
+  margin-top: 0.48rem;
+  width: 100%;
+  border: 1px solid #30363c;
+  border-radius: 8px;
+  background: #0b0e10;
+  color: #edf1ee;
+  padding: 0.46rem 0.52rem;
+  font-size: 0.82rem;
+  resize: vertical;
+  min-height: 58px;
+  font-family: "Space Grotesk", "Sora", sans-serif;
+}
+
+.contracts-chat-actions {
+  margin-top: 0.45rem;
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
 }
 
 .metric-list {
@@ -758,6 +951,10 @@ h2 {
   font-weight: 700;
 }
 
+.tech-hidden .technical-card {
+  display: none;
+}
+
 @keyframes revealUp {
   from {
     opacity: 0;
@@ -790,6 +987,14 @@ h2 {
   .widget-grid,
   .rtah-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .quick-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .jw-grid {
+    grid-template-columns: 1fr;
   }
 
   .card-wide {
@@ -832,7 +1037,9 @@ h2 {
 
   .lanes,
   .health-grid,
-  .rtah-grid {
+  .rtah-grid,
+  .quick-grid,
+  .jw-grid {
     grid-template-columns: 1fr;
   }
 

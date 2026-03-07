@@ -3,6 +3,7 @@ const LOG_PATHS = ["../../knowledge/agent-logs/agent-runs.csv", "./data/agent-ru
 const RTAH_DATA_PATHS = ["./data/rtah-op-app.json"];
 const TUNNEL_STATUS_PATHS = ["/rtah-op-live/data/tunnel-status.json", "./data/tunnel-status.json"];
 const COMMAND_CENTER_ACCESS_PATHS = ["./data/command-center-access.json"];
+const QUICK_ACCESS_PATHS = ["./data/quick-access.json"];
 const WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const ALLERGY_DATA_PATHS = ["./data/houston-allergy.json"];
 const WEATHER_REFRESH_WINDOW_MS = 10 * 60 * 1000;
@@ -18,11 +19,13 @@ const state = {
   rtahData: null,
   tunnelStatus: null,
   commandCenterAccess: null,
+  quickAccess: null,
   filters: {
     lane: "all",
     nodeType: "all",
     search: ""
   },
+  showTechnical: false,
   autoRefreshEnabled: false,
   autoRefreshMs: 30000,
   autoRefreshTimer: null,
@@ -74,6 +77,45 @@ const COMMAND_CENTER_ACCESS_FALLBACK = {
   notes: "Set public_url after Vercel publish."
 };
 
+const QUICK_ACCESS_FALLBACK = {
+  links: [
+    {
+      label: "Command Center (Local)",
+      url: "http://10.0.0.115/deliverables/dashboard/",
+      group: "Dashboard",
+      note: "Best on home Wi-Fi."
+    },
+    {
+      label: "Command Center (Public)",
+      url: "https://dashboard-five-theta-88.vercel.app",
+      group: "Dashboard",
+      note: "Use outside your home network."
+    },
+    {
+      label: "RTAH Hub (Live Test)",
+      url: "http://10.0.0.115/rtah-op-live/public/index.html",
+      group: "RTAH",
+      note: "Local live test path on Pi."
+    },
+    {
+      label: "RTAH Hub (Public)",
+      url: "https://rtah-op-app.vercel.app",
+      group: "RTAH",
+      note: "Stable public URL."
+    }
+  ]
+};
+
+const JW_CONVENTION = {
+  driveUrl: "https://drive.google.com/drive/folders/1TEUotljT356g8qu0kvkPijApT6HI_1gv?usp=sharing",
+  driveAppUrl: "googledrive://drive/folders/1TEUotljT356g8qu0kvkPijApT6HI_1gv",
+  macPath: "/Users/obed/My Drive/JW/Convention Assembly Documents/2026 - Regional"
+};
+const CONTRACTS_NOTEBOOKLM_URL =
+  "https://notebooklm.google.com/notebook/eb554713-8f73-4c2b-a27b-f973c753af51";
+const CONTRACTS_CHAT_STORAGE_KEY = "contractsTeamChatV1";
+const CONTRACTS_CHAT_MAX_MESSAGES = 120;
+
 async function loadText(paths) {
   let lastError = "";
   for (const path of paths) {
@@ -121,6 +163,106 @@ function cleanValue(raw) {
     return v.slice(1, -1);
   }
   return v;
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function loadContractsChatMessages() {
+  try {
+    const raw = localStorage.getItem(CONTRACTS_CHAT_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .map((row) => ({
+        text: String(row && row.text ? row.text : ""),
+        timestamp: String(row && row.timestamp ? row.timestamp : "")
+      }))
+      .filter((row) => row.text);
+  } catch (err) {
+    return [];
+  }
+}
+
+function saveContractsChatMessages(messages) {
+  const normalized = Array.isArray(messages) ? messages.slice(-CONTRACTS_CHAT_MAX_MESSAGES) : [];
+  localStorage.setItem(CONTRACTS_CHAT_STORAGE_KEY, JSON.stringify(normalized));
+}
+
+function formatChatTime(timestamp) {
+  if (!timestamp) return "";
+  const date = new Date(timestamp);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+function renderContractsChat() {
+  const root = document.getElementById("contractsChat");
+  if (!root) return;
+
+  const messages = loadContractsChatMessages();
+  root.innerHTML = `
+    <div class="contracts-chat-shell">
+      <div class="contracts-chat-head">Team Chat</div>
+      <div class="contracts-chat-log">
+        ${
+          messages.length
+            ? messages
+                .map(
+                  (msg) => `
+                    <div class="contracts-chat-row">
+                      <div class="contracts-chat-msg">${escapeHtml(msg.text)}</div>
+                      <div class="contracts-chat-time">${escapeHtml(formatChatTime(msg.timestamp))}</div>
+                    </div>
+                  `
+                )
+                .join("")
+            : `<div class="contracts-chat-empty">No messages yet. Add quick notes for contracts.</div>`
+        }
+      </div>
+      <textarea id="contractsChatInput" class="contracts-chat-input" rows="2" placeholder="Type a message for Contracts Team..."></textarea>
+      <div class="contracts-chat-actions">
+        <button id="contractsChatSendBtn" class="action-btn" type="button">Send</button>
+        <button id="contractsChatClearBtn" class="action-btn secondary-btn" type="button">Clear Chat</button>
+      </div>
+    </div>
+  `;
+}
+
+function sendContractsChatMessage() {
+  const input = document.getElementById("contractsChatInput");
+  if (!(input instanceof HTMLTextAreaElement)) return;
+
+  const text = input.value.trim();
+  if (!text) return;
+
+  const messages = loadContractsChatMessages();
+  messages.push({
+    text,
+    timestamp: new Date().toISOString()
+  });
+  saveContractsChatMessages(messages);
+  renderContractsChat();
+}
+
+function clearContractsChatMessages() {
+  saveContractsChatMessages([]);
+  renderContractsChat();
+}
+
+function openNotebookLmPopup() {
+  const popupFeatures = "popup=yes,width=1100,height=820,noopener,noreferrer";
+  const win = window.open(CONTRACTS_NOTEBOOKLM_URL, "contractsNotebookLm", popupFeatures);
+  if (!win) {
+    window.open(CONTRACTS_NOTEBOOKLM_URL, "_blank", "noopener,noreferrer");
+  }
 }
 
 function parseMapYaml(text) {
@@ -799,6 +941,209 @@ function renderRtahPanel(filteredMap, logs, rtahData, tunnelStatus) {
   `;
 }
 
+function normalizeQuickAccessLinks(quickAccess, accessData, rtahData, tunnelStatus) {
+  const access = { ...COMMAND_CENTER_ACCESS_FALLBACK, ...(accessData || {}) };
+  const profile = rtahData || {};
+  const tunnel = tunnelStatus || {};
+
+  const merged = [...QUICK_ACCESS_FALLBACK.links];
+
+  if (access.local_url) {
+    merged.push({
+      label: "Command Center Local",
+      url: access.local_url,
+      group: "Dashboard",
+      note: "Local network"
+    });
+  }
+  if (access.public_url) {
+    merged.push({
+      label: "Command Center Public",
+      url: access.public_url,
+      group: "Dashboard",
+      note: "Anywhere access"
+    });
+  }
+  if (access.testing_url) {
+    merged.push({
+      label: "Command Center Testing",
+      url: access.testing_url,
+      group: "Dashboard",
+      note: "Latest staged deploy"
+    });
+  }
+
+  if (profile.live_testing_url) {
+    merged.push({
+      label: "RTAH Live Testing",
+      url: profile.live_testing_url,
+      group: "RTAH",
+      note: "Pi live test URL"
+    });
+  }
+  if (profile.testing_public_url) {
+    merged.push({
+      label: "RTAH Testing Public",
+      url: profile.testing_public_url,
+      group: "RTAH",
+      note: "External testing URL"
+    });
+  }
+  if (profile.public_url) {
+    merged.push({
+      label: "RTAH Public",
+      url: profile.public_url,
+      group: "RTAH",
+      note: "Stable public URL"
+    });
+  }
+  if (tunnel.url) {
+    merged.push({
+      label: "RTAH Tunnel",
+      url: tunnel.url,
+      group: "RTAH",
+      note: "Live tunnel endpoint"
+    });
+  }
+
+  const customLinks = Array.isArray(quickAccess && quickAccess.links) ? quickAccess.links : [];
+  for (const link of customLinks) {
+    merged.push({
+      label: link.label || "Quick Link",
+      url: link.url || "",
+      group: link.group || "Quick Access",
+      note: link.note || ""
+    });
+  }
+
+  const seen = new Set();
+  const deduped = [];
+  for (const link of merged) {
+    const key = `${String(link.label || "").trim().toLowerCase()}|${String(link.url || "").trim()}`;
+    if (!link.url || seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(link);
+  }
+  return deduped;
+}
+
+function renderQuickAccessPanel(quickAccess, accessData, rtahData, tunnelStatus) {
+  const panel = document.getElementById("quickAccessPanel");
+  if (!panel) return;
+
+  const links = normalizeQuickAccessLinks(quickAccess, accessData, rtahData, tunnelStatus);
+  if (!links.length) {
+    panel.innerHTML = `<div class="quick-empty">No quick links configured yet. Add entries in <code>data/quick-access.json</code>.</div>`;
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="quick-grid">
+      ${links
+        .map(
+          (link) => `
+            <div class="quick-link-card">
+              <div class="quick-link-top">
+                <div class="quick-link-group">${link.group || "Quick Access"}</div>
+                <span class="status-pill good">Open</span>
+              </div>
+              <div class="quick-link-label">${link.label}</div>
+              <div class="quick-link-note">${link.note || "One-tap access."}</div>
+              <a class="quick-link-url" href="${link.url}" target="_blank" rel="noopener noreferrer">${link.url}</a>
+            </div>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function updateTechVisibility() {
+  document.body.classList.toggle("tech-hidden", !state.showTechnical);
+  const toggle = document.getElementById("toggleTechBtn");
+  if (toggle) {
+    toggle.textContent = state.showTechnical ? "Hide Engineering Panels" : "Show Engineering Panels";
+  }
+}
+
+function macPathToFileUrl(path) {
+  const normalized = String(path || "").replaceAll("\\", "/");
+  return `file://${encodeURI(normalized)}`;
+}
+
+function isMobileClient() {
+  const ua = navigator.userAgent || "";
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+}
+
+function openConventionFolder() {
+  const hint = document.getElementById("jwConventionHint");
+  if (isMobileClient()) {
+    if (hint) hint.textContent = "Opening Google Drive app (fallback to browser link if needed).";
+    window.location.href = JW_CONVENTION.driveAppUrl;
+    setTimeout(() => {
+      window.open(JW_CONVENTION.driveUrl, "_blank", "noopener,noreferrer");
+    }, 700);
+    return;
+  }
+
+  const fileUrl = macPathToFileUrl(JW_CONVENTION.macPath);
+  if (hint) {
+    hint.textContent = "Attempting to open Finder path. If blocked by browser security, use Copy Path and Finder > Go to Folder.";
+  }
+  window.open(fileUrl, "_blank", "noopener,noreferrer");
+}
+
+async function copyConventionPath() {
+  const hint = document.getElementById("jwConventionHint");
+  try {
+    await navigator.clipboard.writeText(JW_CONVENTION.macPath);
+    if (hint) hint.textContent = "Mac path copied. In Finder press Shift+Cmd+G and paste.";
+  } catch (err) {
+    if (hint) hint.textContent = "Could not copy automatically. Copy this path manually from the section.";
+  }
+}
+
+function renderJwPanel() {
+  const panel = document.getElementById("jwPanel");
+  if (!panel) return;
+
+  panel.innerHTML = `
+    <div class="jw-grid">
+      <div class="jw-box">
+        <h3>2026 Convention</h3>
+        <p>Quick-open the 2026 Regional folder. Phone opens Drive app. Desktop tries Finder path.</p>
+        <div class="jw-actions">
+          <button id="openConventionFolderBtn" class="action-btn" type="button">Open 2026 Convention Folder</button>
+          <button id="copyConventionPathBtn" class="action-btn secondary-btn" type="button">Copy Mac Path</button>
+          <a class="action-btn secondary-btn action-link" href="${JW_CONVENTION.driveUrl}" target="_blank" rel="noopener noreferrer">Open Drive Web</a>
+        </div>
+        <div class="kv-list">
+          <div class="kv-row"><span class="k">Drive Folder</span><span class="v"><a href="${JW_CONVENTION.driveUrl}" target="_blank" rel="noopener noreferrer">${JW_CONVENTION.driveUrl}</a></span></div>
+          <div class="kv-row"><span class="k">Mac Path</span><span class="v"><code>${JW_CONVENTION.macPath}</code></span></div>
+        </div>
+        <div id="jwConventionHint" class="jw-hint"></div>
+      </div>
+      <div class="jw-box">
+        <h3>Contracts Team</h3>
+        <p>Quick access for Contracts Team tools and links.</p>
+        <div class="jw-actions">
+          <button id="openNotebookPopupBtn" class="action-btn action-btn-lg" type="button">Ask NotebookLM</button>
+          <a class="action-btn action-link" href="https://rtah-op-app.vercel.app" target="_blank" rel="noopener noreferrer">Open Contracts Public Link</a>
+          <a class="action-btn secondary-btn action-link" href="${CONTRACTS_NOTEBOOKLM_URL}" target="_blank" rel="noopener noreferrer">Open NotebookLM</a>
+        </div>
+        <div class="kv-list">
+          <div class="kv-row"><span class="k">Public Link</span><span class="v"><a href="https://rtah-op-app.vercel.app" target="_blank" rel="noopener noreferrer">https://rtah-op-app.vercel.app</a></span></div>
+          <div class="kv-row"><span class="k">NotebookLM</span><span class="v"><a href="${CONTRACTS_NOTEBOOKLM_URL}" target="_blank" rel="noopener noreferrer">${CONTRACTS_NOTEBOOKLM_URL}</a></span></div>
+          <div class="kv-row"><span class="k">Status</span><span class="v">Contracts quick-link active.</span></div>
+        </div>
+        <div id="contractsChat" class="contracts-chat"></div>
+      </div>
+    </div>
+  `;
+  renderContractsChat();
+}
+
 function renderCommandCenterAccessPanel(accessData) {
   const panel = document.getElementById("commandCenterAccessPanel");
   if (!panel) return;
@@ -864,6 +1209,8 @@ function renderAll() {
   document.getElementById("nodeCount").textContent = `nodes: ${filteredMap.nodes.length}/${state.rawMap.nodes.length}`;
   document.getElementById("edgeCount").textContent = `edges: ${filteredMap.edges.length}/${state.rawMap.edges.length}`;
 
+  renderJwPanel();
+  renderQuickAccessPanel(state.quickAccess, state.commandCenterAccess, state.rtahData, state.tunnelStatus);
   renderGraph(filteredMap);
   renderRtahPanel(filteredMap, state.logs, state.rtahData, state.tunnelStatus);
   renderCommandCenterAccessPanel(state.commandCenterAccess);
@@ -872,6 +1219,7 @@ function renderAll() {
   renderWidgetMetrics(state.rawMap, filteredMap, state.logs);
   renderWeatherWidget();
   renderAllergyWidget();
+  updateTechVisibility();
 }
 
 function setSelectOptions(selectId, values, allLabel) {
@@ -934,6 +1282,37 @@ function bindControls() {
   document.getElementById("allergyRefreshBtn").addEventListener("click", () => {
     refreshAllergyData(true);
   });
+  document.getElementById("toggleTechBtn").addEventListener("click", () => {
+    state.showTechnical = !state.showTechnical;
+    updateTechVisibility();
+  });
+  document.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.id === "openConventionFolderBtn") {
+      openConventionFolder();
+    }
+    if (target.id === "copyConventionPathBtn") {
+      copyConventionPath();
+    }
+    if (target.id === "contractsChatSendBtn") {
+      sendContractsChatMessage();
+    }
+    if (target.id === "contractsChatClearBtn") {
+      clearContractsChatMessages();
+    }
+    if (target.id === "openNotebookPopupBtn") {
+      openNotebookLmPopup();
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.id === "contractsChatInput" && event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      sendContractsChatMessage();
+    }
+  });
 
   state.controlsBound = true;
 }
@@ -951,18 +1330,20 @@ function updateAutoRefreshTimer() {
 }
 
 async function refreshData() {
-  const [mapText, logText, rtahData, tunnelStatus, commandCenterAccess] = await Promise.all([
+  const [mapText, logText, rtahData, tunnelStatus, commandCenterAccess, quickAccess] = await Promise.all([
     loadText(MAP_PATHS),
     loadText(LOG_PATHS),
     loadJson(RTAH_DATA_PATHS).catch(() => null),
     loadJson(TUNNEL_STATUS_PATHS).catch(() => null),
-    loadJson(COMMAND_CENTER_ACCESS_PATHS).catch(() => null)
+    loadJson(COMMAND_CENTER_ACCESS_PATHS).catch(() => null),
+    loadJson(QUICK_ACCESS_PATHS).catch(() => null)
   ]);
   state.rawMap = parseMapYaml(mapText);
   state.logs = parseCsv(logText);
   state.rtahData = rtahData;
   state.tunnelStatus = tunnelStatus;
   state.commandCenterAccess = commandCenterAccess;
+  state.quickAccess = quickAccess;
   await refreshWeatherData();
   await refreshAllergyData(true);
 

@@ -10,9 +10,9 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260306k" />
+    <link rel="stylesheet" href="./styles.css?v=20260306q" />
   </head>
-  <body>
+  <body class="tech-hidden">
     <div class="bg-orb bg-orb-a"></div>
     <div class="bg-orb bg-orb-b"></div>
     <div class="wrap">
@@ -20,8 +20,11 @@
         <p class="eyebrow">Raspberry-PI-Zero</p>
         <h1>Command Center Dashboard</h1>
         <p class="subtitle">
-          Topology, skills, routing, and guardrail health from canonical project files.
+          One screen for daily essentials and one-tap links so you do not need to jump across sites.
         </p>
+        <div class="hero-actions">
+          <button id="toggleTechBtn" class="action-btn tech-toggle-btn" type="button">Show Engineering Panels</button>
+        </div>
         <div class="meta-row">
           <span id="updatedOn" class="pill">updated_on: ...</span>
           <span id="nodeCount" class="pill">nodes: ...</span>
@@ -31,42 +34,8 @@
 
       <main class="grid">
         <section class="card card-wide">
-          <h2>Widgets</h2>
+          <h2>Daily Essentials</h2>
           <div class="widget-grid">
-            <div class="widget-box widget-hidden">
-              <h3>Filters</h3>
-              <label class="field-label" for="laneFilter">Lane</label>
-              <select id="laneFilter" class="field-input">
-                <option value="all">All lanes</option>
-              </select>
-              <label class="field-label" for="nodeTypeFilter">Node Type</label>
-              <select id="nodeTypeFilter" class="field-input">
-                <option value="all">All types</option>
-              </select>
-              <label class="field-label" for="nodeSearch">Search</label>
-              <input id="nodeSearch" class="field-input" type="search" placeholder="label, node_id, skill path" />
-            </div>
-
-            <div class="widget-box widget-hidden">
-              <h3>Refresh</h3>
-              <button id="refreshNowBtn" class="action-btn" type="button">Refresh Now</button>
-              <label class="check-row">
-                <input id="autoRefreshToggle" type="checkbox" />
-                <span>Auto refresh</span>
-              </label>
-              <label class="field-label" for="refreshInterval">Interval</label>
-              <select id="refreshInterval" class="field-input">
-                <option value="15000">15 seconds</option>
-                <option value="30000" selected>30 seconds</option>
-                <option value="60000">60 seconds</option>
-              </select>
-            </div>
-
-            <div class="widget-box widget-hidden">
-              <h3>Snapshot</h3>
-              <div id="widgetMetrics" class="metric-list"></div>
-            </div>
-
             <div class="widget-box weather-widget-box">
               <h3>Weather</h3>
               <div class="weather-primary-label">Houston, TX</div>
@@ -88,6 +57,11 @@
         </section>
 
         <section class="card card-wide">
+          <h2>JW</h2>
+          <div id="jwPanel"></div>
+        </section>
+
+        <section class="card card-wide">
           <h2>Command Center Access</h2>
           <div id="commandCenterAccessPanel"></div>
         </section>
@@ -97,44 +71,88 @@
           <div id="rtahPanel"></div>
         </section>
 
-        <section class="card card-wide">
+        <section class="card card-wide technical-card">
+          <h2>Dashboard Controls</h2>
+          <div class="widget-grid">
+            <div class="widget-box">
+              <h3>Filters</h3>
+              <label class="field-label" for="laneFilter">Lane</label>
+              <select id="laneFilter" class="field-input">
+                <option value="all">All lanes</option>
+              </select>
+              <label class="field-label" for="nodeTypeFilter">Node Type</label>
+              <select id="nodeTypeFilter" class="field-input">
+                <option value="all">All types</option>
+              </select>
+              <label class="field-label" for="nodeSearch">Search</label>
+              <input id="nodeSearch" class="field-input" type="search" placeholder="label, node_id, skill path" />
+            </div>
+
+            <div class="widget-box">
+              <h3>Refresh</h3>
+              <button id="refreshNowBtn" class="action-btn" type="button">Refresh Now</button>
+              <label class="check-row">
+                <input id="autoRefreshToggle" type="checkbox" />
+                <span>Auto refresh</span>
+              </label>
+              <label class="field-label" for="refreshInterval">Interval</label>
+              <select id="refreshInterval" class="field-input">
+                <option value="15000">15 seconds</option>
+                <option value="30000" selected>30 seconds</option>
+                <option value="60000">60 seconds</option>
+              </select>
+            </div>
+
+            <div class="widget-box">
+              <h3>Snapshot</h3>
+              <div id="widgetMetrics" class="metric-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card-wide technical-card">
           <h2>Agent Graph</h2>
           <div id="graphLanes" class="lanes"></div>
           <div id="edgeFlow" class="edge-flow"></div>
         </section>
 
-        <section class="card">
+        <section class="card technical-card">
           <h2>Skill Bindings</h2>
           <div id="skillsPanel"></div>
         </section>
 
-        <section class="card">
+        <section class="card technical-card">
           <h2>Prompt Sources</h2>
           <div id="promptsPanel"></div>
         </section>
 
-        <section class="card">
+        <section class="card technical-card">
           <h2>Permissions</h2>
           <div id="permissionsPanel"></div>
         </section>
 
-        <section class="card">
+        <section class="card technical-card">
           <h2>Cost Controls</h2>
           <div id="costPanel"></div>
         </section>
 
-        <section class="card">
+        <section class="card technical-card">
           <h2>Scope</h2>
           <div id="scopePanel"></div>
         </section>
 
-        <section class="card card-wide">
+        <section class="card card-wide technical-card">
           <h2>Health</h2>
           <div id="healthPanel"></div>
+        </section>
+
+        <section class="card card-wide">
+          <h2>Quick Access</h2>
+          <div id="quickAccessPanel"></div>
         </section>
       </main>
     </div>
 
-    <script type="module" src="./main.js?v=20260306k"></script>
+    <script type="module" src="./main.js?v=20260306q"></script>
   </body>
 </html>
