@@ -5,8 +5,24 @@ const TUNNEL_STATUS_PATHS = ["/rtah-op-live/data/tunnel-status.json", "./data/tu
 const COMMAND_CENTER_ACCESS_PATHS = ["./data/command-center-access.json"];
 const QUICK_ACCESS_PATHS = ["./data/quick-access.json"];
 const WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
+const AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality";
 const ALLERGY_DATA_PATHS = ["./data/houston-allergy.json"];
+const DAILY_TEXT_SOURCES = {
+  en: {
+    label: "English",
+    fallbackPaths: ["./data/jw-daily-text-en.json", "./data/jw-daily-text.json"],
+    sourceUrl: "https://wol.jw.org/en/wol/h/r1/lp-e"
+  },
+  es: {
+    label: "Spanish",
+    fallbackPaths: ["./data/jw-daily-text-es.json"],
+    sourceUrl: "https://wol.jw.org/es/wol/h/r4/lp-s"
+  }
+};
 const WEATHER_REFRESH_WINDOW_MS = 10 * 60 * 1000;
+const DAILY_TEXT_REFRESH_WINDOW_MS = 6 * 60 * 60 * 1000;
+const DAILY_TEXT_CACHE_KEY = "jwDailyTextCacheV1";
+const DAILY_TEXT_LANG_KEY = "dailyTextLang";
 const HOUSTON_WEATHER = {
   place: "Houston, TX",
   latitude: 29.7604,
@@ -25,7 +41,6 @@ const state = {
     nodeType: "all",
     search: ""
   },
-  showTechnical: false,
   autoRefreshEnabled: false,
   autoRefreshMs: 30000,
   autoRefreshTimer: null,
@@ -58,7 +73,17 @@ const state = {
     sourceUrl: "",
     status: "loading"
   },
-  allergyFetchedAt: 0
+  allergyFetchedAt: 0,
+  dailyTextLang: "en",
+  dailyText: {
+    dateLabel: "Loading...",
+    verse: "Fetching today's scripture...",
+    body: "",
+    sourceUrl: "https://wol.jw.org/en/wol/h/r1/lp-e",
+    updatedAt: "",
+    status: "loading"
+  },
+  dailyTextFetchedAt: 0
 };
 
 const RTAH_APP_FALLBACK = {
@@ -165,6 +190,80 @@ function cleanValue(raw) {
   return v;
 }
 
+function stripMarkdownToText(value) {
+  return String(value || "")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/g, "$1")
+    .replace(/[_*`>#]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatTodayHeading() {
+  return new Date().toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric"
+  });
+}
+
+function parseDailyTextMarkdown(markdown) {
+  const normalized = String(markdown || "").replace(/\r\n/g, "\n");
+  const pattern = /^([A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2})\n-+\n([\s\S]*?)(?=^[A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2}\n-+\n|^Welcome\.\n|$)/gm;
+  const entries = [];
+  let match;
+  while ((match = pattern.exec(normalized))) {
+    const dateLabel = match[1].trim();
+    const block = (match[2] || "").trim();
+    if (!block) continue;
+    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
+    const verseLine = lines.find((line) => /—/.test(line) || /_/.test(line)) || lines[0] || "";
+    const paragraph = lines
+      .filter((line) => !line.startsWith("[Examining the Scriptures Daily"))
+      .slice(1)
+      .join(" ")
+      .trim();
+    const sourceMatch = block.match(/\[Examining the Scriptures Daily[^\]]*\]\((https?:\/\/[^)]+)\)/);
+    entries.push({
+      dateLabel,
+      verse: stripMarkdownToText(verseLine),
+      body: stripMarkdownToText(paragraph || ""),
+      sourceUrl: sourceMatch ? sourceMatch[1] : "https://wol.jw.org/en/wol/h/r1/lp-e"
+    });
+  }
+
+  if (!entries.length) {
+    throw new Error("Unable to parse daily text entries");
+  }
+
+  const todayLabel = formatTodayHeading();
+  const todayEntry = entries.find((entry) => entry.dateLabel === todayLabel) || entries[0];
+  return {
+    ...todayEntry,
+    updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+    status: "ready"
+  };
+}
+
+function loadDailyTextCache() {
+  try {
+    const raw = localStorage.getItem(`${DAILY_TEXT_CACHE_KEY}_${state.dailyTextLang}`);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || !parsed.dateLabel || !parsed.verse) return null;
+    return parsed;
+  } catch (err) {
+    return null;
+  }
+}
+
+function saveDailyTextCache(entry) {
+  try {
+    localStorage.setItem(`${DAILY_TEXT_CACHE_KEY}_${state.dailyTextLang}`, JSON.stringify(entry));
+  } catch (err) {
+    // best-effort cache only
+  }
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replaceAll("&", "&amp;")
@@ -234,6 +333,72 @@ function renderContractsChat() {
       </div>
     </div>
   `;
+}
+
+function renderDailyTextHero() {
+  const dateEl = document.getElementById("dailyTextDate");
+  const verseEl = document.getElementById("dailyTextVerse");
+  const bodyEl = document.getElementById("dailyTextBody");
+  const sourceEl = document.getElementById("dailyTextSource");
+  if (!dateEl || !verseEl || !bodyEl || !sourceEl) return;
+
+  const daily = state.dailyText;
+  dateEl.textContent = daily.dateLabel || "Daily Text";
+  verseEl.textContent = daily.verse || "Daily scripture unavailable.";
+  bodyEl.textContent = daily.body || "Commentary unavailable.";
+  sourceEl.setAttribute("href", daily.sourceUrl || "https://wol.jw.org/en/wol/h/r1/lp-e");
+
+  const langToggle = document.getElementById("dailyTextLangToggle");
+  if (langToggle instanceof HTMLInputElement) {
+    langToggle.checked = state.dailyTextLang === "es";
+  }
+}
+
+async function refreshDailyText(force = false) {
+  const now = Date.now();
+  if (!force && state.dailyTextFetchedAt && now - state.dailyTextFetchedAt < DAILY_TEXT_REFRESH_WINDOW_MS) {
+    return;
+  }
+
+  const cached = loadDailyTextCache();
+  if (cached && !force) {
+    state.dailyText = {
+      ...state.dailyText,
+      ...cached,
+      status: "ready"
+    };
+    renderDailyTextHero();
+  } else {
+    state.dailyText.status = "loading";
+    renderDailyTextHero();
+  }
+
+  try {
+    const source = DAILY_TEXT_SOURCES[state.dailyTextLang] || DAILY_TEXT_SOURCES.en;
+    const fallback = await loadJsonFresh(source.fallbackPaths);
+    state.dailyText = {
+      dateLabel: fallback.date_label || "Daily Text",
+      verse: fallback.verse || "Daily scripture unavailable.",
+      body: fallback.body || "Daily commentary unavailable.",
+      sourceUrl: fallback.source_url || source.sourceUrl,
+      updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+      status: "ready"
+    };
+    saveDailyTextCache(state.dailyText);
+    state.dailyTextFetchedAt = now;
+  } catch (fallbackErr) {
+    if (cached && !force) return;
+    state.dailyText = {
+      dateLabel: "Daily Text Unavailable",
+      verse: "Could not load today's text.",
+      body: `Reason: ${fallbackErr.message}`,
+      sourceUrl: "https://wol.jw.org/en/wol/h/r1/lp-e",
+      updatedAt: "",
+      status: "error"
+    };
+  }
+
+  renderDailyTextHero();
 }
 
 function sendContractsChatMessage() {
@@ -628,6 +793,87 @@ function allergyClass(category) {
   return "risk-low";
 }
 
+function pollenScore(value) {
+  const v = Number(value || 0);
+  if (v <= 0) return 1;
+  if (v <= 10) return 2;
+  if (v <= 30) return 3;
+  if (v <= 60) return 4;
+  return 5;
+}
+
+function scoreCategory(score) {
+  if (score >= 5) return "Very High";
+  if (score >= 4) return "High";
+  if (score >= 3) return "Moderate";
+  return "Low";
+}
+
+function nearestTimeIndex(times) {
+  if (!Array.isArray(times) || times.length === 0) return -1;
+  const now = Date.now();
+  let best = 0;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (let i = 0; i < times.length; i += 1) {
+    const ts = new Date(times[i]).getTime();
+    if (Number.isNaN(ts)) continue;
+    const diff = Math.abs(ts - now);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      best = i;
+    }
+  }
+  return best;
+}
+
+function buildLiveAllergyFromOpenMeteo(payload) {
+  const hourly = payload.hourly || {};
+  const times = hourly.time || [];
+  const idx = nearestTimeIndex(times);
+  if (idx < 0) throw new Error("Open-Meteo payload missing hourly time data");
+
+  const alder = Number((hourly.alder_pollen || [])[idx] || 0);
+  const birch = Number((hourly.birch_pollen || [])[idx] || 0);
+  const olive = Number((hourly.olive_pollen || [])[idx] || 0);
+  const grass = Number((hourly.grass_pollen || [])[idx] || 0);
+  const ragweed = Number((hourly.ragweed_pollen || [])[idx] || 0);
+  const mugwort = Number((hourly.mugwort_pollen || [])[idx] || 0);
+  const treeCombined = Math.max(alder, birch, olive);
+
+  const raw = [
+    { name: "Tree Pollen", rawValue: treeCombined },
+    { name: "Grass Pollen", rawValue: grass },
+    { name: "Ragweed Pollen", rawValue: ragweed },
+    { name: "Mugwort Pollen", rawValue: mugwort }
+  ];
+
+  const items = raw
+    .map((item) => {
+      const value = pollenScore(item.rawValue);
+      return {
+        name: item.name,
+        value,
+        category: scoreCategory(value),
+        index_date_local: times[idx] || ""
+      };
+    })
+    .sort((a, b) => b.value - a.value);
+
+  const dominant = items[0] || { name: "Unknown", value: 1, category: "Low", index_date_local: "" };
+  return {
+    location: "Houston, TX",
+    overallCategory: dominant.category,
+    overallValue: dominant.value,
+    dominantLabel: dominant.name,
+    dominantValue: dominant.value,
+    sourceDate: dominant.index_date_local || "",
+    items,
+    sourceUrl: "https://open-meteo.com/en/docs/air-quality-api",
+    updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+    status: "ready"
+  };
+}
+
 function renderAllergyWidget() {
   const root = document.getElementById("allergyWidget");
   if (!root) return;
@@ -685,44 +931,59 @@ async function refreshAllergyData(force = false) {
   renderAllergyWidget();
 
   try {
-    const payload = await loadJsonFresh(ALLERGY_DATA_PATHS);
-    const items = Array.isArray(payload.items) ? payload.items : [];
-    const dominant = items.reduce(
-      (acc, item) => {
-        const value = Number(item.value || 0);
-        return value > acc.value ? { label: item.name || "n/a", value } : acc;
-      },
-      { label: "", value: -1 }
-    );
-
+    const url =
+      `${AIR_QUALITY_URL}?latitude=${HOUSTON_WEATHER.latitude}&longitude=${HOUSTON_WEATHER.longitude}` +
+      `&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen` +
+      `&timezone=auto`;
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) throw new Error("Live allergy source unavailable");
+    const livePayload = await res.json();
     state.allergy = {
       ...state.allergy,
-      location: payload.location || "Houston, TX",
-      overallCategory: (payload.summary && payload.summary.overall_category) || "Unknown",
-      overallValue: (payload.summary && payload.summary.overall_value) ?? null,
-      dominantLabel:
-        (payload.summary && payload.summary.dominant_trigger && payload.summary.dominant_trigger.name) ||
-        dominant.label ||
-        "n/a",
-      dominantValue:
-        (payload.summary && payload.summary.dominant_trigger && payload.summary.dominant_trigger.value) ??
-        dominant.value,
-      sourceDate:
-        (payload.summary && payload.summary.source_index_date_local) ||
-        (items[0] && items[0].index_date_local) ||
-        "",
-      items: items.slice(0, 5),
-      sourceUrl: payload.source_url || "https://www.accuweather.com/en/us/houston/77002/health-activities/351197",
-      updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-      status: "ready"
+      ...buildLiveAllergyFromOpenMeteo(livePayload)
     };
     state.allergyFetchedAt = Date.now();
-  } catch (err) {
-    state.allergy = {
-      ...state.allergy,
-      overallCategory: `Allergy unavailable: ${err.message}`,
-      status: "error"
-    };
+  } catch (liveErr) {
+    try {
+      const payload = await loadJsonFresh(ALLERGY_DATA_PATHS);
+      const items = Array.isArray(payload.items) ? payload.items : [];
+      const dominant = items.reduce(
+        (acc, item) => {
+          const value = Number(item.value || 0);
+          return value > acc.value ? { label: item.name || "n/a", value } : acc;
+        },
+        { label: "", value: -1 }
+      );
+
+      state.allergy = {
+        ...state.allergy,
+        location: payload.location || "Houston, TX",
+        overallCategory: (payload.summary && payload.summary.overall_category) || "Unknown",
+        overallValue: (payload.summary && payload.summary.overall_value) ?? null,
+        dominantLabel:
+          (payload.summary && payload.summary.dominant_trigger && payload.summary.dominant_trigger.name) ||
+          dominant.label ||
+          "n/a",
+        dominantValue:
+          (payload.summary && payload.summary.dominant_trigger && payload.summary.dominant_trigger.value) ??
+          dominant.value,
+        sourceDate:
+          (payload.summary && payload.summary.source_index_date_local) ||
+          (items[0] && items[0].index_date_local) ||
+          "",
+        items: items.slice(0, 5),
+        sourceUrl: payload.source_url || "https://www.accuweather.com/en/us/houston/77002/health-activities/351197",
+        updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+        status: "ready"
+      };
+      state.allergyFetchedAt = Date.now();
+    } catch (snapshotErr) {
+      state.allergy = {
+        ...state.allergy,
+        overallCategory: `Allergy unavailable: ${snapshotErr.message || liveErr.message}`,
+        status: "error"
+      };
+    }
   }
 
   renderAllergyWidget();
@@ -1058,14 +1319,6 @@ function renderQuickAccessPanel(quickAccess, accessData, rtahData, tunnelStatus)
   `;
 }
 
-function updateTechVisibility() {
-  document.body.classList.toggle("tech-hidden", !state.showTechnical);
-  const toggle = document.getElementById("toggleTechBtn");
-  if (toggle) {
-    toggle.textContent = state.showTechnical ? "Hide Engineering Panels" : "Show Engineering Panels";
-  }
-}
-
 function macPathToFileUrl(path) {
   const normalized = String(path || "").replaceAll("\\", "/");
   return `file://${encodeURI(normalized)}`;
@@ -1209,17 +1462,13 @@ function renderAll() {
   document.getElementById("nodeCount").textContent = `nodes: ${filteredMap.nodes.length}/${state.rawMap.nodes.length}`;
   document.getElementById("edgeCount").textContent = `edges: ${filteredMap.edges.length}/${state.rawMap.edges.length}`;
 
+  renderDailyTextHero();
   renderJwPanel();
   renderQuickAccessPanel(state.quickAccess, state.commandCenterAccess, state.rtahData, state.tunnelStatus);
-  renderGraph(filteredMap);
   renderRtahPanel(filteredMap, state.logs, state.rtahData, state.tunnelStatus);
   renderCommandCenterAccessPanel(state.commandCenterAccess);
-  renderPanels(filteredMap);
-  renderHealth(filteredMap, state.logs);
-  renderWidgetMetrics(state.rawMap, filteredMap, state.logs);
   renderWeatherWidget();
   renderAllergyWidget();
-  updateTechVisibility();
 }
 
 function setSelectOptions(selectId, values, allLabel) {
@@ -1232,6 +1481,13 @@ function setSelectOptions(selectId, values, allLabel) {
 }
 
 function syncFilterControls() {
+  const laneFilter = document.getElementById("laneFilter");
+  const nodeTypeFilter = document.getElementById("nodeTypeFilter");
+  const nodeSearch = document.getElementById("nodeSearch");
+  const autoRefreshToggle = document.getElementById("autoRefreshToggle");
+  const refreshInterval = document.getElementById("refreshInterval");
+  if (!laneFilter || !nodeTypeFilter || !nodeSearch || !autoRefreshToggle || !refreshInterval) return;
+
   const lanes = [...new Set(state.rawMap.nodes.map((n) => n.lane_id))].sort();
   const nodeTypes = [...new Set(state.rawMap.nodes.map((n) => n.node_type))].sort();
   setSelectOptions("laneFilter", lanes, "All lanes");
@@ -1247,45 +1503,70 @@ function syncFilterControls() {
 function bindControls() {
   if (state.controlsBound) return;
 
-  document.getElementById("laneFilter").addEventListener("change", (e) => {
-    state.filters.lane = e.target.value;
-    renderAll();
-  });
+  const laneFilter = document.getElementById("laneFilter");
+  if (laneFilter) {
+    laneFilter.addEventListener("change", (e) => {
+      state.filters.lane = e.target.value;
+      renderAll();
+    });
+  }
+  const nodeTypeFilter = document.getElementById("nodeTypeFilter");
+  if (nodeTypeFilter) {
+    nodeTypeFilter.addEventListener("change", (e) => {
+      state.filters.nodeType = e.target.value;
+      renderAll();
+    });
+  }
+  const nodeSearch = document.getElementById("nodeSearch");
+  if (nodeSearch) {
+    nodeSearch.addEventListener("input", (e) => {
+      state.filters.search = e.target.value;
+      renderAll();
+    });
+  }
+  const refreshNowBtn = document.getElementById("refreshNowBtn");
+  if (refreshNowBtn) {
+    refreshNowBtn.addEventListener("click", () => {
+      refreshData();
+    });
+  }
+  const autoRefreshToggle = document.getElementById("autoRefreshToggle");
+  if (autoRefreshToggle) {
+    autoRefreshToggle.addEventListener("change", (e) => {
+      state.autoRefreshEnabled = e.target.checked;
+      updateAutoRefreshTimer();
+    });
+  }
+  const refreshInterval = document.getElementById("refreshInterval");
+  if (refreshInterval) {
+    refreshInterval.addEventListener("change", (e) => {
+      state.autoRefreshMs = Number(e.target.value);
+      updateAutoRefreshTimer();
+    });
+  }
 
-  document.getElementById("nodeTypeFilter").addEventListener("change", (e) => {
-    state.filters.nodeType = e.target.value;
-    renderAll();
-  });
-
-  document.getElementById("nodeSearch").addEventListener("input", (e) => {
-    state.filters.search = e.target.value;
-    renderAll();
-  });
-
-  document.getElementById("refreshNowBtn").addEventListener("click", () => {
-    refreshData();
-  });
-
-  document.getElementById("autoRefreshToggle").addEventListener("change", (e) => {
-    state.autoRefreshEnabled = e.target.checked;
-    updateAutoRefreshTimer();
-  });
-
-  document.getElementById("refreshInterval").addEventListener("change", (e) => {
-    state.autoRefreshMs = Number(e.target.value);
-    updateAutoRefreshTimer();
-  });
-
-  document.getElementById("weatherRefreshBtn").addEventListener("click", () => {
-    refreshWeatherData(true);
-  });
-  document.getElementById("allergyRefreshBtn").addEventListener("click", () => {
-    refreshAllergyData(true);
-  });
-  document.getElementById("toggleTechBtn").addEventListener("click", () => {
-    state.showTechnical = !state.showTechnical;
-    updateTechVisibility();
-  });
+  const weatherRefreshBtn = document.getElementById("weatherRefreshBtn");
+  if (weatherRefreshBtn) {
+    weatherRefreshBtn.addEventListener("click", () => {
+      refreshWeatherData(true);
+    });
+  }
+  const allergyRefreshBtn = document.getElementById("allergyRefreshBtn");
+  if (allergyRefreshBtn) {
+    allergyRefreshBtn.addEventListener("click", () => {
+      refreshAllergyData(true);
+    });
+  }
+  const dailyTextLangToggle = document.getElementById("dailyTextLangToggle");
+  if (dailyTextLangToggle instanceof HTMLInputElement) {
+    dailyTextLangToggle.addEventListener("change", () => {
+      state.dailyTextLang = dailyTextLangToggle.checked ? "es" : "en";
+      localStorage.setItem(DAILY_TEXT_LANG_KEY, state.dailyTextLang);
+      state.dailyTextFetchedAt = 0;
+      refreshDailyText(true).catch(() => {});
+      renderDailyTextHero();
+    });
+  }
   document.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
@@ -1330,6 +1611,8 @@ function updateAutoRefreshTimer() {
 }
 
 async function refreshData() {
+  const savedLang = localStorage.getItem(DAILY_TEXT_LANG_KEY);
+  state.dailyTextLang = savedLang === "es" ? "es" : "en";
   const [mapText, logText, rtahData, tunnelStatus, commandCenterAccess, quickAccess] = await Promise.all([
     loadText(MAP_PATHS),
     loadText(LOG_PATHS),
@@ -1344,6 +1627,7 @@ async function refreshData() {
   state.tunnelStatus = tunnelStatus;
   state.commandCenterAccess = commandCenterAccess;
   state.quickAccess = quickAccess;
+  refreshDailyText().catch(() => {});
   await refreshWeatherData();
   await refreshAllergyData(true);
 
@@ -1353,6 +1637,9 @@ async function refreshData() {
 }
 
 refreshData().catch((err) => {
-  const panel = document.getElementById("healthPanel");
-  panel.innerHTML = `<div class="health-box"><div class="warn">Dashboard failed to load data: ${err.message}</div></div>`;
+  console.error("Dashboard failed to load data:", err);
+  const body = document.getElementById("dailyTextBody");
+  if (body) {
+    body.textContent = `Dashboard failed to load data: ${err.message}`;
+  }
 });

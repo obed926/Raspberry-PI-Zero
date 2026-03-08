@@ -10,20 +10,27 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260306q" />
+    <link rel="stylesheet" href="./styles.css?v=20260308g" />
   </head>
-  <body class="tech-hidden">
+  <body>
     <div class="bg-orb bg-orb-a"></div>
     <div class="bg-orb bg-orb-b"></div>
     <div class="wrap">
       <header class="hero">
-        <p class="eyebrow">Raspberry-PI-Zero</p>
-        <h1>Command Center Dashboard</h1>
-        <p class="subtitle">
-          One screen for daily essentials and one-tap links so you do not need to jump across sites.
-        </p>
+        <p class="eyebrow">JW Daily Text</p>
+        <h1 id="dailyTextDate">Loading daily text...</h1>
+        <p id="dailyTextVerse" class="daily-text-verse">Fetching today's scripture...</p>
+        <p id="dailyTextBody" class="subtitle">Loading commentary...</p>
         <div class="hero-actions">
-          <button id="toggleTechBtn" class="action-btn tech-toggle-btn" type="button">Show Engineering Panels</button>
+          <div class="lang-switch-wrap" aria-label="Daily text language">
+            <span class="lang-label">EN</span>
+            <label class="lang-switch">
+              <input id="dailyTextLangToggle" type="checkbox" />
+              <span class="lang-slider"></span>
+            </label>
+            <span class="lang-label">ES</span>
+          </div>
+          <a id="dailyTextSource" class="action-btn action-link" href="https://wol.jw.org/en/wol/h/r1/lp-e" target="_blank" rel="noopener noreferrer">Open Daily Text Source</a>
         </div>
         <div class="meta-row">
           <span id="updatedOn" class="pill">updated_on: ...</span>
@@ -33,28 +40,23 @@
       </header>
 
       <main class="grid">
-        <section class="card card-wide">
-          <h2>Daily Essentials</h2>
-          <div class="widget-grid">
-            <div class="widget-box weather-widget-box">
-              <h3>Weather</h3>
-              <div class="weather-primary-label">Houston, TX</div>
-              <button id="weatherRefreshBtn" class="action-btn weather-refresh-btn" type="button">Update Weather</button>
-              <div id="weatherWidget" class="weather-widget">
-                <div class="weather-loading">Loading weather...</div>
-              </div>
-            </div>
-
-            <div class="widget-box weather-widget-box">
-              <h3>Allergy Forecast</h3>
-              <div class="weather-primary-label">Houston, TX</div>
-              <button id="allergyRefreshBtn" class="action-btn weather-refresh-btn" type="button">Update Allergy</button>
-              <div id="allergyWidget" class="weather-widget">
-                <div class="weather-loading">Loading allergy forecast...</div>
-              </div>
+        <div class="widget-grid widget-grid-outside">
+          <div class="widget-box weather-widget-box">
+            <h3>Weather</h3>
+            <div class="weather-primary-label">Houston, TX</div>
+            <div id="weatherWidget" class="weather-widget">
+              <div class="weather-loading">Loading weather...</div>
             </div>
           </div>
-        </section>
+
+          <div class="widget-box weather-widget-box">
+            <h3>Allergy Forecast</h3>
+            <div class="weather-primary-label">Houston, TX</div>
+            <div id="allergyWidget" class="weather-widget">
+              <div class="weather-loading">Loading allergy forecast...</div>
+            </div>
+          </div>
+        </div>
 
         <section class="card card-wide">
           <h2>JW</h2>
@@ -71,81 +73,6 @@
           <div id="rtahPanel"></div>
         </section>
 
-        <section class="card card-wide technical-card">
-          <h2>Dashboard Controls</h2>
-          <div class="widget-grid">
-            <div class="widget-box">
-              <h3>Filters</h3>
-              <label class="field-label" for="laneFilter">Lane</label>
-              <select id="laneFilter" class="field-input">
-                <option value="all">All lanes</option>
-              </select>
-              <label class="field-label" for="nodeTypeFilter">Node Type</label>
-              <select id="nodeTypeFilter" class="field-input">
-                <option value="all">All types</option>
-              </select>
-              <label class="field-label" for="nodeSearch">Search</label>
-              <input id="nodeSearch" class="field-input" type="search" placeholder="label, node_id, skill path" />
-            </div>
-
-            <div class="widget-box">
-              <h3>Refresh</h3>
-              <button id="refreshNowBtn" class="action-btn" type="button">Refresh Now</button>
-              <label class="check-row">
-                <input id="autoRefreshToggle" type="checkbox" />
-                <span>Auto refresh</span>
-              </label>
-              <label class="field-label" for="refreshInterval">Interval</label>
-              <select id="refreshInterval" class="field-input">
-                <option value="15000">15 seconds</option>
-                <option value="30000" selected>30 seconds</option>
-                <option value="60000">60 seconds</option>
-              </select>
-            </div>
-
-            <div class="widget-box">
-              <h3>Snapshot</h3>
-              <div id="widgetMetrics" class="metric-list"></div>
-            </div>
-          </div>
-        </section>
-
-        <section class="card card-wide technical-card">
-          <h2>Agent Graph</h2>
-          <div id="graphLanes" class="lanes"></div>
-          <div id="edgeFlow" class="edge-flow"></div>
-        </section>
-
-        <section class="card technical-card">
-          <h2>Skill Bindings</h2>
-          <div id="skillsPanel"></div>
-        </section>
-
-        <section class="card technical-card">
-          <h2>Prompt Sources</h2>
-          <div id="promptsPanel"></div>
-        </section>
-
-        <section class="card technical-card">
-          <h2>Permissions</h2>
-          <div id="permissionsPanel"></div>
-        </section>
-
-        <section class="card technical-card">
-          <h2>Cost Controls</h2>
-          <div id="costPanel"></div>
-        </section>
-
-        <section class="card technical-card">
-          <h2>Scope</h2>
-          <div id="scopePanel"></div>
-        </section>
-
-        <section class="card card-wide technical-card">
-          <h2>Health</h2>
-          <div id="healthPanel"></div>
-        </section>
-
         <section class="card card-wide">
           <h2>Quick Access</h2>
           <div id="quickAccessPanel"></div>
@@ -153,6 +80,6 @@
       </main>
     </div>
 
-    <script type="module" src="./main.js?v=20260306q"></script>
+    <script type="module" src="./main.js?v=20260308h"></script>
   </body>
 </html>

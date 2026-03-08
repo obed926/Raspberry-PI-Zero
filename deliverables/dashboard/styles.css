@@ -97,8 +97,75 @@ h1 {
   max-width: 72ch;
 }
 
+.daily-text-verse {
+  margin: 0.38rem 0 0;
+  font-size: 1rem;
+  color: #e8f4df;
+  font-weight: 700;
+}
+
 .hero-actions {
   margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.44rem;
+  align-items: center;
+}
+
+.lang-switch-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.lang-label {
+  font-size: 0.72rem;
+  color: #dfe8df;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.lang-switch {
+  position: relative;
+  width: 46px;
+  height: 24px;
+  display: inline-block;
+}
+
+.lang-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.lang-slider {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: 1px solid #3e474f;
+  background: linear-gradient(145deg, rgba(66, 74, 68, 0.35), rgba(58, 66, 60, 0.18));
+  transition: 180ms ease;
+}
+
+.lang-slider::before {
+  content: "";
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  left: 2px;
+  top: 2px;
+  background: #eef4eb;
+  transition: transform 180ms ease;
+}
+
+.lang-switch input:checked + .lang-slider {
+  border-color: var(--chartreuse);
+  background: linear-gradient(140deg, rgba(182, 255, 59, 0.24), rgba(182, 255, 59, 0.1));
+}
+
+.lang-switch input:checked + .lang-slider::before {
+  transform: translateX(22px);
 }
 
 .meta-row {
@@ -172,6 +239,10 @@ h2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.7rem;
+}
+
+.widget-grid-outside {
+  margin-bottom: 0.9rem;
 }
 
 .widget-box {
@@ -460,11 +531,6 @@ h2 {
 .weather-widget-box {
   position: relative;
   overflow: hidden;
-}
-
-.weather-refresh-btn {
-  margin-top: 0.5rem;
-  width: 100%;
 }
 
 .weather-primary-label {

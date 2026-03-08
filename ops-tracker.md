@@ -41,6 +41,14 @@
 | T-029 | Add NotebookLM quick link to Contracts Team subsection | worker_exec | [x] | Added NotebookLM button + URL row under Contracts Team, then redeployed to Pi and Vercel alias. |
 | T-030 | Add Contracts subsection chat feature | worker_exec | [x] | Added local persistent Contracts Team chat (send, enter-to-send, clear chat) using browser storage, then redeployed to Pi and Vercel alias. |
 | T-031 | Improve Contracts NotebookLM launch UX for quick testing | worker_exec | [x] | Added prominent Ask NotebookLM button in Contracts Team with popup-open behavior and tab fallback; redeployed to Pi and Vercel alias. |
+| T-032 | Make allergy widget refresh pull live data each time | worker_exec | [x] | Added live Open-Meteo Houston pollen fetch on allergy refresh with fallback to local AccuWeather snapshot JSON; deployed to Pi and Vercel alias. |
+| T-033 | Remove weather/allergy update buttons and unbox essentials layout | worker_exec | [x] | Removed weather/allergy update buttons, removed Daily Essentials card heading/box, rendered both widgets directly in top-level layout, and redeployed to Pi + Vercel alias. |
+| T-034 | Replace top command-center hero with JW Daily Text panel | worker_exec | [x] | Replaced hero copy with dynamic JW Daily Text (date, verse, commentary, source link), added live daily feed parse with local fallback JSON, and redeployed to Pi + Vercel alias. |
+| T-035 | Speed up JW Daily Text load time on dashboard open | worker_exec | [x] | Added cache-first Daily Text rendering (localStorage), background live refresh with timeout, and fallback retention; deployed to Pi + Vercel alias. |
+| T-036 | Fix Daily Text not loading by using generated local data source | worker_exec | [x] | Added `scripts/update-jw-daily-text-json.sh`, generated real Daily Text JSON, switched dashboard to local JSON load path with cache, and redeployed to Pi + Vercel alias. |
+| T-037 | Add English/Spanish toggle for Daily Text (English primary) | worker_exec | [x] | Added EN/ES Daily Text toggle with English default, language-specific caches and source links, generated `jw-daily-text-en.json` + `jw-daily-text-es.json`, and redeployed to Pi + Vercel alias. |
+| T-038 | Replace Daily Text language buttons with single EN/ES switch | worker_exec | [x] | Replaced two language buttons with single EN/ES switch (English default), updated switch bindings/state persistence, and redeployed to Pi + Vercel alias. |
+| T-039 | Remove Engineering Panels from Command Center UI | worker_exec | [x] | Removed engineering toggle and all engineering panel sections from UI, hardened JS for missing controls, and redeployed to Pi + Vercel alias. |
 
 ## Guardrail Incidents
 
