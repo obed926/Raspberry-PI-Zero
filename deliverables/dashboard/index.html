@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090a0b" />
     <title>Command Center Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -10,14 +11,18 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css?v=20260308g" />
+    <link rel="stylesheet" href="./styles.css?v=20260309l" />
   </head>
   <body>
     <div class="bg-orb bg-orb-a"></div>
     <div class="bg-orb bg-orb-b"></div>
+    <div id="pullRefreshIndicator" class="pull-refresh-indicator" aria-live="polite">
+      <span id="pullRefreshIcon" class="pull-refresh-icon" aria-hidden="true">↻</span>
+      <span id="pullRefreshLabel" class="pull-refresh-label">Pull to refresh</span>
+    </div>
     <div class="wrap">
-      <header class="hero">
-        <p class="eyebrow">JW Daily Text</p>
+      <header id="dailyTextHero" class="hero" aria-expanded="false">
+        <a class="eyebrow" href="https://wol.jw.org/en/" target="_blank" rel="noopener noreferrer">JW Daily Text</a>
         <h1 id="dailyTextDate">Loading daily text...</h1>
         <p id="dailyTextVerse" class="daily-text-verse">Fetching today's scripture...</p>
         <p id="dailyTextBody" class="subtitle">Loading commentary...</p>
@@ -30,12 +35,6 @@
             </label>
             <span class="lang-label">ES</span>
           </div>
-          <a id="dailyTextSource" class="action-btn action-link" href="https://wol.jw.org/en/wol/h/r1/lp-e" target="_blank" rel="noopener noreferrer">Open Daily Text Source</a>
-        </div>
-        <div class="meta-row">
-          <span id="updatedOn" class="pill">updated_on: ...</span>
-          <span id="nodeCount" class="pill">nodes: ...</span>
-          <span id="edgeCount" class="pill">edges: ...</span>
         </div>
       </header>
 
@@ -43,7 +42,6 @@
         <div class="widget-grid widget-grid-outside">
           <div class="widget-box weather-widget-box">
             <h3>Weather</h3>
-            <div class="weather-primary-label">Houston, TX</div>
             <div id="weatherWidget" class="weather-widget">
               <div class="weather-loading">Loading weather...</div>
             </div>
@@ -51,7 +49,6 @@
 
           <div class="widget-box weather-widget-box">
             <h3>Allergy Forecast</h3>
-            <div class="weather-primary-label">Houston, TX</div>
             <div id="allergyWidget" class="weather-widget">
               <div class="weather-loading">Loading allergy forecast...</div>
             </div>
@@ -64,22 +61,16 @@
         </section>
 
         <section class="card card-wide">
-          <h2>Command Center Access</h2>
-          <div id="commandCenterAccessPanel"></div>
-        </section>
-
-        <section class="card card-wide">
-          <h2>RTAH OP App</h2>
-          <div id="rtahPanel"></div>
-        </section>
-
-        <section class="card card-wide">
-          <h2>Quick Access</h2>
-          <div id="quickAccessPanel"></div>
+          <h2>Operations Pages</h2>
+          <div class="jw-actions">
+            <a class="action-btn action-btn-lg action-link" href="./command-center-access.html">Command Center Access</a>
+            <a class="action-btn action-btn-lg action-link" href="./rtah-op-app.html">RTAH OP App</a>
+            <a class="action-btn action-btn-lg action-link" href="./quick-access.html">Quick Access</a>
+          </div>
         </section>
       </main>
     </div>
 
-    <script type="module" src="./main.js?v=20260308h"></script>
+    <script type="module" src="./main.js?v=20260309ac"></script>
   </body>
 </html>

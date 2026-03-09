@@ -6,28 +6,38 @@ const COMMAND_CENTER_ACCESS_PATHS = ["./data/command-center-access.json"];
 const QUICK_ACCESS_PATHS = ["./data/quick-access.json"];
 const WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality";
+const ACCUWEATHER_ALLERGY_MD_URL = "https://r.jina.ai/http://www.accuweather.com/en/us/houston/77002/weather-forecast/351197";
 const ALLERGY_DATA_PATHS = ["./data/houston-allergy.json"];
 const DAILY_TEXT_SOURCES = {
   en: {
     label: "English",
+    liveBaseUrl: "https://r.jina.ai/http://wol.jw.org/en/wol/h/r1/lp-e",
     fallbackPaths: ["./data/jw-daily-text-en.json", "./data/jw-daily-text.json"],
     sourceUrl: "https://wol.jw.org/en/wol/h/r1/lp-e"
   },
   es: {
     label: "Spanish",
+    liveBaseUrl: "https://r.jina.ai/http://wol.jw.org/es/wol/h/r4/lp-s",
     fallbackPaths: ["./data/jw-daily-text-es.json"],
     sourceUrl: "https://wol.jw.org/es/wol/h/r4/lp-s"
   }
 };
 const WEATHER_REFRESH_WINDOW_MS = 10 * 60 * 1000;
 const DAILY_TEXT_REFRESH_WINDOW_MS = 6 * 60 * 60 * 1000;
+const DAILY_TEXT_LIVE_TIMEOUT_MS = 8000;
 const DAILY_TEXT_CACHE_KEY = "jwDailyTextCacheV1";
 const DAILY_TEXT_LANG_KEY = "dailyTextLang";
+const DAILY_TEXT_EXPANDED_KEY = "dailyTextExpanded";
+const WEATHER_EXPANDED_KEY = "weatherExpanded";
+const ALLERGY_EXPANDED_KEY = "allergyExpanded";
+const PULL_REFRESH_TRIGGER_PX = 92;
 const HOUSTON_WEATHER = {
   place: "Houston, TX",
   latitude: 29.7604,
   longitude: -95.3698
 };
+let dailyTextPrefetchLang = "";
+let dailyTextRequestSeq = 0;
 
 const state = {
   rawMap: null,
@@ -45,6 +55,7 @@ const state = {
   autoRefreshMs: 30000,
   autoRefreshTimer: null,
   controlsBound: false,
+  pullRefreshBound: false,
   weather: {
     place: HOUSTON_WEATHER.place,
     currentTempF: null,
@@ -61,6 +72,7 @@ const state = {
     status: "loading"
   },
   weatherFetchedAt: 0,
+  weatherExpanded: false,
   allergy: {
     location: "Houston, TX",
     overallCategory: "Loading...",
@@ -74,7 +86,9 @@ const state = {
     status: "loading"
   },
   allergyFetchedAt: 0,
+  allergyExpanded: false,
   dailyTextLang: "en",
+  dailyTextExpanded: false,
   dailyText: {
     dateLabel: "Loading...",
     verse: "Fetching today's scripture...",
@@ -83,7 +97,10 @@ const state = {
     updatedAt: "",
     status: "loading"
   },
-  dailyTextFetchedAt: 0
+  dailyTextFetchedAtByLang: {
+    en: 0,
+    es: 0
+  }
 };
 
 const RTAH_APP_FALLBACK = {
@@ -134,10 +151,21 @@ const QUICK_ACCESS_FALLBACK = {
 const JW_CONVENTION = {
   driveUrl: "https://drive.google.com/drive/folders/1TEUotljT356g8qu0kvkPijApT6HI_1gv?usp=sharing",
   driveAppUrl: "googledrive://drive/folders/1TEUotljT356g8qu0kvkPijApT6HI_1gv",
-  macPath: "/Users/obed/My Drive/JW/Convention Assembly Documents/2026 - Regional"
+  macPath: "/Users/obed/My Drive/JW/Convention Assembly Documents/2026 - Regional",
+  macShortcutName: "Open 2026 Convention Folder"
 };
 const CONTRACTS_NOTEBOOKLM_URL =
   "https://notebooklm.google.com/notebook/eb554713-8f73-4c2b-a27b-f973c753af51";
+const CONTRACTS_SUPPORT = {
+  driveUrl: "https://1drv.ms/f/c/84dc8027d1a25edb/IgAamtFayWE9Tp4uOteS3fSpAWkjImaUSF6fRe-qwb7gtMc",
+  macPath: "/Users/obed/Library/CloudStorage/OneDrive-Personal/Contracts Support Team",
+  macShortcutName: "Open Contracts Support Team Folder"
+};
+const CONTRACTS_SE_TEXAS = {
+  driveUrl: "https://1drv.ms/f/c/84dc8027d1a25edb/IgA0RSpnMOuPTYBPWFijKB3-AX0gF7yv7GS5-NL9GcRJcFI",
+  macPath: "/Users/obed/Library/CloudStorage/OneDrive-Personal/Contract Team – SE Texas",
+  macShortcutName: "Open Contracts Team Folder"
+};
 const CONTRACTS_CHAT_STORAGE_KEY = "contractsTeamChatV1";
 const CONTRACTS_CHAT_MAX_MESSAGES = 120;
 
@@ -198,55 +226,169 @@ function stripMarkdownToText(value) {
     .trim();
 }
 
-function formatTodayHeading() {
-  return new Date().toLocaleDateString("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric"
-  });
+function normalizeTextForMatch(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/,/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function parseDailyTextMarkdown(markdown) {
+function buildTodayDailyTextLabel(lang) {
+  if (lang === "es") {
+    return new Date().toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" });
+  }
+  return new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" });
+}
+
+function buildDailyTextLiveUrl(source) {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const day = now.getDate();
+  return `${source.liveBaseUrl}/${year}/${month}/${day}`;
+}
+
+function isDailyTextHeading(line, lang) {
+  if (lang === "es") {
+    return /^(Lunes|Martes|Miercoles|Miércoles|Jueves|Viernes|Sabado|Sábado|Domingo)\s+\d{1,2}\s+de\s+[A-Za-záéíóúñ]+$/i.test(
+      String(line || "").trim()
+    );
+  }
+  return /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+[A-Za-z]+\s+\d{1,2}$/i.test(
+    String(line || "").trim()
+  );
+}
+
+function parseDailyTextEntries(markdown, lang, fallbackSourceUrl) {
   const normalized = String(markdown || "").replace(/\r\n/g, "\n");
-  const pattern = /^([A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2})\n-+\n([\s\S]*?)(?=^[A-Za-z]+,\s+[A-Za-z]+\s+\d{1,2}\n-+\n|^Welcome\.\n|$)/gm;
+  const lines = normalized.split("\n");
   const entries = [];
-  let match;
-  while ((match = pattern.exec(normalized))) {
-    const dateLabel = match[1].trim();
-    const block = (match[2] || "").trim();
-    if (!block) continue;
-    const lines = block.split("\n").map((line) => line.trim()).filter(Boolean);
-    const verseLine = lines.find((line) => /—/.test(line) || /_/.test(line)) || lines[0] || "";
-    const paragraph = lines
-      .filter((line) => !line.startsWith("[Examining the Scriptures Daily"))
-      .slice(1)
-      .join(" ")
-      .trim();
-    const sourceMatch = block.match(/\[Examining the Scriptures Daily[^\]]*\]\((https?:\/\/[^)]+)\)/);
+
+  for (let i = 0; i < lines.length; i += 1) {
+    const heading = lines[i].trim();
+    if (!isDailyTextHeading(heading, lang)) continue;
+    if (!/^[-=]{3,}$/.test((lines[i + 1] || "").trim())) continue;
+
+    let j = i + 2;
+    while (j < lines.length && !isDailyTextHeading(lines[j].trim(), lang)) {
+      j += 1;
+    }
+    const block = lines.slice(i + 2, j).join("\n").trim();
+    const blockLines = block
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+    const verseLine = blockLines.find((line) => /—/.test(line) || /_/.test(line)) || blockLines[0] || "";
+    const cutoff = blockLines.findIndex(
+      (line) =>
+        line.startsWith("[Examining the Scriptures Daily") ||
+        line.startsWith("[Examinemos las Escrituras todos los días") ||
+        line === "Welcome." ||
+        line === "Bienvenido."
+    );
+    const bodyLines = blockLines
+      .slice(1, cutoff > 0 ? cutoff : blockLines.length)
+      .filter((line) => !line.startsWith("*   "))
+      .filter((line) => !/^(Font Size|Share)$/.test(line))
+      .filter((line) => !/^(A|A\+)$/.test(line));
+    const sourceMatch = block.match(
+      /\[(?:Examining the Scriptures Daily|Examinemos las Escrituras todos los días)[^\]]*\]\((https?:\/\/[^)]+)\)/
+    );
     entries.push({
-      dateLabel,
-      verse: stripMarkdownToText(verseLine),
-      body: stripMarkdownToText(paragraph || ""),
-      sourceUrl: sourceMatch ? sourceMatch[1] : "https://wol.jw.org/en/wol/h/r1/lp-e"
+      dateLabel: heading || "Daily Text",
+      verse: stripMarkdownToText(verseLine || "Daily scripture unavailable."),
+      body: stripMarkdownToText(bodyLines.join(" ") || "Daily commentary unavailable."),
+      sourceUrl: sourceMatch ? sourceMatch[1] : fallbackSourceUrl
     });
+    i = j - 1;
   }
 
-  if (!entries.length) {
-    throw new Error("Unable to parse daily text entries");
-  }
+  return entries;
+}
 
-  const todayLabel = formatTodayHeading();
-  const todayEntry = entries.find((entry) => entry.dateLabel === todayLabel) || entries[0];
+function parseDailyTextMarkdown(markdown, fallbackSourceUrl, lang) {
+  const entries = parseDailyTextEntries(markdown, lang, fallbackSourceUrl);
+  if (!entries.length) throw new Error("Could not parse live Daily Text feed");
+
+  const today = new Date();
+  const monthNorm = normalizeTextForMatch(
+    today.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { month: "long" })
+  );
+  const day = String(today.getDate());
+  const todayLabelNorm = normalizeTextForMatch(buildTodayDailyTextLabel(lang));
+
+  const todayEntry =
+    entries.find((entry) => normalizeTextForMatch(entry.dateLabel) === todayLabelNorm) ||
+    entries.find((entry) => {
+      const norm = normalizeTextForMatch(entry.dateLabel);
+      return lang === "es" ? norm.includes(`${day} de ${monthNorm}`) : norm.includes(`${monthNorm} ${day}`);
+    }) ||
+    entries[0];
+
   return {
-    ...todayEntry,
+    dateLabel: todayEntry.dateLabel || "Daily Text",
+    verse: todayEntry.verse || "Daily scripture unavailable.",
+    body: todayEntry.body || "Daily commentary unavailable.",
+    sourceUrl: todayEntry.sourceUrl || fallbackSourceUrl,
     updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
     status: "ready"
   };
 }
 
-function loadDailyTextCache() {
+async function fetchTextWithTimeout(url, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const raw = localStorage.getItem(`${DAILY_TEXT_CACHE_KEY}_${state.dailyTextLang}`);
+    const res = await fetch(url, { cache: "no-store", signal: controller.signal });
+    if (!res.ok) throw new Error(`live source returned ${res.status}`);
+    return await res.text();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchDailyTextForLang(lang) {
+  const source = DAILY_TEXT_SOURCES[lang] || DAILY_TEXT_SOURCES.en;
+  try {
+    const liveMarkdown = await fetchTextWithTimeout(
+      `${buildDailyTextLiveUrl(source)}?v=${Date.now()}`,
+      DAILY_TEXT_LIVE_TIMEOUT_MS
+    );
+    return parseDailyTextMarkdown(liveMarkdown, source.sourceUrl, lang);
+  } catch (liveErr) {
+    const fallback = await loadJsonFresh(source.fallbackPaths);
+    return {
+      dateLabel: fallback.date_label || "Daily Text",
+      verse: fallback.verse || "Daily scripture unavailable.",
+      body: fallback.body || "Daily commentary unavailable.",
+      sourceUrl: fallback.source_url || source.sourceUrl,
+      updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
+      status: "ready"
+    };
+  }
+}
+
+async function prefetchOtherDailyTextLang() {
+  const otherLang = state.dailyTextLang === "es" ? "en" : "es";
+  if (loadDailyTextCacheForLang(otherLang)) return;
+  if (dailyTextPrefetchLang === otherLang) return;
+  dailyTextPrefetchLang = otherLang;
+  try {
+    const entry = await fetchDailyTextForLang(otherLang);
+    saveDailyTextCache(entry, otherLang);
+  } catch (err) {
+    // best-effort prefetch only
+  } finally {
+    if (dailyTextPrefetchLang === otherLang) dailyTextPrefetchLang = "";
+  }
+}
+
+function loadDailyTextCacheForLang(lang) {
+  try {
+    const raw = localStorage.getItem(`${DAILY_TEXT_CACHE_KEY}_${lang}`);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.dateLabel || !parsed.verse) return null;
@@ -256,9 +398,13 @@ function loadDailyTextCache() {
   }
 }
 
-function saveDailyTextCache(entry) {
+function loadDailyTextCache() {
+  return loadDailyTextCacheForLang(state.dailyTextLang);
+}
+
+function saveDailyTextCache(entry, lang = state.dailyTextLang) {
   try {
-    localStorage.setItem(`${DAILY_TEXT_CACHE_KEY}_${state.dailyTextLang}`, JSON.stringify(entry));
+    localStorage.setItem(`${DAILY_TEXT_CACHE_KEY}_${lang}`, JSON.stringify(entry));
   } catch (err) {
     // best-effort cache only
   }
@@ -336,17 +482,19 @@ function renderContractsChat() {
 }
 
 function renderDailyTextHero() {
+  const heroEl = document.getElementById("dailyTextHero");
   const dateEl = document.getElementById("dailyTextDate");
   const verseEl = document.getElementById("dailyTextVerse");
   const bodyEl = document.getElementById("dailyTextBody");
-  const sourceEl = document.getElementById("dailyTextSource");
-  if (!dateEl || !verseEl || !bodyEl || !sourceEl) return;
+  if (!heroEl || !dateEl || !verseEl || !bodyEl) return;
 
   const daily = state.dailyText;
   dateEl.textContent = daily.dateLabel || "Daily Text";
   verseEl.textContent = daily.verse || "Daily scripture unavailable.";
   bodyEl.textContent = daily.body || "Commentary unavailable.";
-  sourceEl.setAttribute("href", daily.sourceUrl || "https://wol.jw.org/en/wol/h/r1/lp-e");
+  bodyEl.hidden = !state.dailyTextExpanded;
+  heroEl.classList.toggle("daily-text-collapsed", !state.dailyTextExpanded);
+  heroEl.setAttribute("aria-expanded", state.dailyTextExpanded ? "true" : "false");
 
   const langToggle = document.getElementById("dailyTextLangToggle");
   if (langToggle instanceof HTMLInputElement) {
@@ -354,51 +502,57 @@ function renderDailyTextHero() {
   }
 }
 
-async function refreshDailyText(force = false) {
+async function refreshDailyText(force = false, requestedLang = state.dailyTextLang) {
+  const lang = requestedLang === "es" ? "es" : "en";
   const now = Date.now();
-  if (!force && state.dailyTextFetchedAt && now - state.dailyTextFetchedAt < DAILY_TEXT_REFRESH_WINDOW_MS) {
+  const lastFetchedAt = Number(state.dailyTextFetchedAtByLang[lang] || 0);
+  if (!force && lastFetchedAt && now - lastFetchedAt < DAILY_TEXT_REFRESH_WINDOW_MS) {
     return;
   }
+  const requestSeq = ++dailyTextRequestSeq;
 
-  const cached = loadDailyTextCache();
-  if (cached && !force) {
+  const cached = loadDailyTextCacheForLang(lang);
+  if (cached && state.dailyTextLang === lang) {
     state.dailyText = {
       ...state.dailyText,
       ...cached,
       status: "ready"
     };
     renderDailyTextHero();
-  } else {
+  } else if (state.dailyTextLang === lang) {
     state.dailyText.status = "loading";
     renderDailyTextHero();
   }
 
   try {
-    const source = DAILY_TEXT_SOURCES[state.dailyTextLang] || DAILY_TEXT_SOURCES.en;
-    const fallback = await loadJsonFresh(source.fallbackPaths);
-    state.dailyText = {
-      dateLabel: fallback.date_label || "Daily Text",
-      verse: fallback.verse || "Daily scripture unavailable.",
-      body: fallback.body || "Daily commentary unavailable.",
-      sourceUrl: fallback.source_url || source.sourceUrl,
-      updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-      status: "ready"
-    };
-    saveDailyTextCache(state.dailyText);
-    state.dailyTextFetchedAt = now;
+    const entry = await fetchDailyTextForLang(lang);
+    saveDailyTextCache(entry, lang);
+    state.dailyTextFetchedAtByLang[lang] = Date.now();
+    if (requestSeq !== dailyTextRequestSeq || state.dailyTextLang !== lang) return;
+    state.dailyText = entry;
   } catch (fallbackErr) {
-    if (cached && !force) return;
+    if (cached) {
+      if (requestSeq !== dailyTextRequestSeq || state.dailyTextLang !== lang) return;
+      state.dailyText = {
+        ...state.dailyText,
+        ...cached,
+        status: "ready"
+      };
+      renderDailyTextHero();
+      return;
+    }
     state.dailyText = {
       dateLabel: "Daily Text Unavailable",
       verse: "Could not load today's text.",
       body: `Reason: ${fallbackErr.message}`,
-      sourceUrl: "https://wol.jw.org/en/wol/h/r1/lp-e",
+      sourceUrl: (DAILY_TEXT_SOURCES[lang] || DAILY_TEXT_SOURCES.en).sourceUrl,
       updatedAt: "",
       status: "error"
     };
   }
 
   renderDailyTextHero();
+  prefetchOtherDailyTextLang().catch(() => {});
 }
 
 function sendContractsChatMessage() {
@@ -672,7 +826,7 @@ function renderWeatherWidget() {
   const span = Math.max(1, maxTemp - minTemp);
 
   root.innerHTML = `
-    <div class="weather-shell">
+    <div class="weather-shell collapsible ${state.weatherExpanded ? "is-expanded" : "is-collapsed"}">
       <div class="weather-top">
         <div class="weather-place">${weather.place}</div>
         <div class="weather-updated">${weather.updatedAt || "Updated now"}</div>
@@ -688,43 +842,43 @@ function renderWeatherWidget() {
         <span>Humidity ${weather.humidity}%</span>
         <span>Wind ${weather.windMph} mph</span>
       </div>
-
-      <div class="weather-section-title">24-Hour Forecast</div>
-      <div class="weather-hourly-strip">
-        ${weather.hourly24
-          .map(
-            (row) => `
-              <div class="weather-hour-card">
-                <div class="weather-hour-label">${row.label}</div>
-                <div class="weather-hour-icon">${row.icon}</div>
-                <div class="weather-hour-temp">${row.tempF}&deg;</div>
-                <div class="weather-hour-precip">${row.precip}%</div>
-              </div>
-            `
-          )
-          .join("")}
-      </div>
-
-      <div class="weather-section-title">5-Day Forecast</div>
-      <div class="weather-daily-list">
-        ${weather.daily5
-          .map((day) => {
-            const leftPct = Math.max(0, Math.min(100, ((day.lowF - minTemp) / span) * 100));
-            const widthPct = Math.max(10, Math.min(100 - leftPct, ((day.highF - day.lowF) / span) * 100));
-            return `
-              <div class="weather-day-row">
-                <div class="weather-day-name">${day.label}</div>
-                <div class="weather-day-icon">${day.icon}</div>
-                <div class="weather-day-low">${day.lowF}&deg;</div>
-                <div class="weather-day-range">
-                  <span class="weather-day-range-fill" style="left:${leftPct}%;width:${widthPct}%"></span>
+      <div class="weather-extended">
+        <div class="weather-section-title">24-Hour Forecast</div>
+        <div class="weather-hourly-strip">
+          ${weather.hourly24
+            .map(
+              (row) => `
+                <div class="weather-hour-card">
+                  <div class="weather-hour-label">${row.label}</div>
+                  <div class="weather-hour-icon">${row.icon}</div>
+                  <div class="weather-hour-temp">${row.tempF}&deg;</div>
+                  <div class="weather-hour-precip">${row.precip}%</div>
                 </div>
-                <div class="weather-day-high">${day.highF}&deg;</div>
-                <div class="weather-day-precip">${day.precip}%</div>
-              </div>
-            `;
-          })
-          .join("")}
+              `
+            )
+            .join("")}
+        </div>
+        <div class="weather-section-title">5-Day Forecast</div>
+        <div class="weather-daily-list">
+          ${weather.daily5
+            .map((day) => {
+              const leftPct = Math.max(0, Math.min(100, ((day.lowF - minTemp) / span) * 100));
+              const widthPct = Math.max(10, Math.min(100 - leftPct, ((day.highF - day.lowF) / span) * 100));
+              return `
+                <div class="weather-day-row">
+                  <div class="weather-day-name">${day.label}</div>
+                  <div class="weather-day-icon">${day.icon}</div>
+                  <div class="weather-day-low">${day.lowF}&deg;</div>
+                  <div class="weather-day-range">
+                    <span class="weather-day-range-fill" style="left:${leftPct}%;width:${widthPct}%"></span>
+                  </div>
+                  <div class="weather-day-high">${day.highF}&deg;</div>
+                  <div class="weather-day-precip">${day.precip}%</div>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
       </div>
     </div>
   `;
@@ -809,66 +963,40 @@ function scoreCategory(score) {
   return "Low";
 }
 
-function nearestTimeIndex(times) {
-  if (!Array.isArray(times) || times.length === 0) return -1;
-  const now = Date.now();
-  let best = 0;
-  let bestDiff = Number.POSITIVE_INFINITY;
-  for (let i = 0; i < times.length; i += 1) {
-    const ts = new Date(times[i]).getTime();
-    if (Number.isNaN(ts)) continue;
-    const diff = Math.abs(ts - now);
-    if (diff < bestDiff) {
-      bestDiff = diff;
-      best = i;
-    }
-  }
-  return best;
+function allergyValueFromCategory(category) {
+  const norm = String(category || "").toLowerCase();
+  if (norm === "very high") return 5;
+  if (norm === "high") return 4;
+  if (norm === "moderate") return 3;
+  return 2;
 }
 
-function buildLiveAllergyFromOpenMeteo(payload) {
-  const hourly = payload.hourly || {};
-  const times = hourly.time || [];
-  const idx = nearestTimeIndex(times);
-  if (idx < 0) throw new Error("Open-Meteo payload missing hourly time data");
+function buildAllergyFromAccuWeatherMarkdown(markdown) {
+  const text = String(markdown || "");
+  const wanted = ["Tree Pollen", "Ragweed Pollen", "Mold", "Grass Pollen", "Dust & Dander"];
+  const levels = new Map();
+  const rx = /(Tree Pollen|Ragweed Pollen|Mold|Grass Pollen|Dust & Dander)\s+(Low|Moderate|High|Very High)/gi;
+  let match = rx.exec(text);
+  while (match) {
+    levels.set(match[1], match[2]);
+    match = rx.exec(text);
+  }
+  if (!levels.size) throw new Error("AccuWeather allergy levels not found");
 
-  const alder = Number((hourly.alder_pollen || [])[idx] || 0);
-  const birch = Number((hourly.birch_pollen || [])[idx] || 0);
-  const olive = Number((hourly.olive_pollen || [])[idx] || 0);
-  const grass = Number((hourly.grass_pollen || [])[idx] || 0);
-  const ragweed = Number((hourly.ragweed_pollen || [])[idx] || 0);
-  const mugwort = Number((hourly.mugwort_pollen || [])[idx] || 0);
-  const treeCombined = Math.max(alder, birch, olive);
-
-  const raw = [
-    { name: "Tree Pollen", rawValue: treeCombined },
-    { name: "Grass Pollen", rawValue: grass },
-    { name: "Ragweed Pollen", rawValue: ragweed },
-    { name: "Mugwort Pollen", rawValue: mugwort }
-  ];
-
-  const items = raw
-    .map((item) => {
-      const value = pollenScore(item.rawValue);
-      return {
-        name: item.name,
-        value,
-        category: scoreCategory(value),
-        index_date_local: times[idx] || ""
-      };
-    })
-    .sort((a, b) => b.value - a.value);
-
-  const dominant = items[0] || { name: "Unknown", value: 1, category: "Low", index_date_local: "" };
+  const items = wanted.map((name) => {
+    const category = levels.get(name) || "Low";
+    return { name, value: allergyValueFromCategory(category), category };
+  });
+  const dominant = [...items].sort((a, b) => Number(b.value || 0) - Number(a.value || 0))[0] || items[0];
   return {
     location: "Houston, TX",
-    overallCategory: dominant.category,
-    overallValue: dominant.value,
-    dominantLabel: dominant.name,
-    dominantValue: dominant.value,
-    sourceDate: dominant.index_date_local || "",
+    overallCategory: dominant?.category || "Unknown",
+    overallValue: dominant?.value ?? null,
+    dominantLabel: dominant?.name || "n/a",
+    dominantValue: dominant?.value ?? null,
+    sourceDate: new Date().toLocaleDateString(),
     items,
-    sourceUrl: "https://open-meteo.com/en/docs/air-quality-api",
+    sourceUrl: "https://www.accuweather.com/en/us/houston/77002/weather-forecast/351197",
     updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
     status: "ready"
   };
@@ -884,8 +1012,28 @@ function renderAllergyWidget() {
     return;
   }
 
+  const displayOrder = ["Tree Pollen", "Ragweed Pollen", "Mold", "Grass Pollen", "Dust & Dander"];
+  const norm = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9& ]/g, "").trim();
+  const lookup = new Map((allergy.items || []).map((item) => [norm(item.name), item]));
+  const displayItems = displayOrder.map((name) => {
+    const key = norm(name);
+    let item = lookup.get(key) || null;
+    if (!item && name === "Mold") item = lookup.get("mugwort pollen") || lookup.get("mugwort") || null;
+    if (!item && name === "Dust & Dander") item = lookup.get("dander") || lookup.get("dust") || null;
+    return {
+      name,
+      value: item ? Number(item.value || 0) : null,
+      category: item ? item.category : "n/a"
+    };
+  });
+  const dustItem = displayItems.find((item) => item.name === "Dust & Dander") || {
+    name: "Dust & Dander",
+    value: null,
+    category: "n/a"
+  };
+
   root.innerHTML = `
-    <div class="weather-shell allergy-shell">
+    <div class="weather-shell allergy-shell collapsible ${state.allergyExpanded ? "is-expanded" : "is-collapsed"}">
       <div class="weather-top">
         <div class="weather-place">${allergy.location}</div>
         <div class="weather-updated">${allergy.updatedAt || "Updated now"}</div>
@@ -900,26 +1048,35 @@ function renderAllergyWidget() {
           <span class="allergy-driver">Top trigger: ${allergy.dominantLabel || "n/a"}</span>
         </div>
       </div>
-      <div class="weather-section-title">Houston Allergy Breakdown</div>
-      <div class="allergy-list">
-        ${allergy.items
-          .map(
-            (item) => `
-              <div class="allergy-row">
-                <div class="allergy-name">${item.name}</div>
-                <div class="allergy-bar-track">
-                  <span class="allergy-bar-fill" style="width:${Math.max(0, Math.min(100, (Number(item.value || 0) / 5) * 100))}%"></span>
-                </div>
-                <div class="allergy-value">${item.value}/5</div>
-                <div class="allergy-cat ${allergyClass(item.category)}">${item.category}</div>
-              </div>
-            `
-          )
-          .join("")}
+      <div class="allergy-collapsed">
+        <div class="allergy-row">
+          <div class="allergy-name">${dustItem.name}</div>
+          <div class="allergy-value">${Number.isFinite(dustItem.value) ? `${dustItem.value}/5` : "n/a"}</div>
+          <div class="allergy-cat ${allergyClass(dustItem.category)}">${dustItem.category || "n/a"}</div>
+        </div>
       </div>
-      <div class="allergy-footnote">
-        Source date: ${allergy.sourceDate || "n/a"} |
-        <a href="${allergy.sourceUrl}" target="_blank" rel="noopener noreferrer">AccuWeather Houston Health</a>
+      <div class="allergy-detail">
+        <div class="weather-section-title">Houston Allergy Breakdown</div>
+        <div class="allergy-list">
+          ${displayItems
+            .map(
+              (item) => `
+                <div class="allergy-row">
+                  <div class="allergy-name">${item.name}</div>
+                  <div class="allergy-bar-track">
+                    <span class="allergy-bar-fill" style="width:${Math.max(0, Math.min(100, ((Number(item.value || 0) || 0) / 5) * 100))}%"></span>
+                  </div>
+                  <div class="allergy-value">${Number.isFinite(item.value) ? `${item.value}/5` : "n/a"}</div>
+                  <div class="allergy-cat ${allergyClass(item.category)}">${item.category || "n/a"}</div>
+                </div>
+              `
+            )
+            .join("")}
+        </div>
+        <div class="allergy-footnote">
+          Source date: ${allergy.sourceDate || "n/a"} |
+          <a href="${allergy.sourceUrl}" target="_blank" rel="noopener noreferrer">AccuWeather Houston Allergy Outlook</a>
+        </div>
       </div>
     </div>
   `;
@@ -931,16 +1088,12 @@ async function refreshAllergyData(force = false) {
   renderAllergyWidget();
 
   try {
-    const url =
-      `${AIR_QUALITY_URL}?latitude=${HOUSTON_WEATHER.latitude}&longitude=${HOUSTON_WEATHER.longitude}` +
-      `&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen` +
-      `&timezone=auto`;
-    const res = await fetch(url, { cache: "no-store" });
-    if (!res.ok) throw new Error("Live allergy source unavailable");
-    const livePayload = await res.json();
+    const res = await fetch(ACCUWEATHER_ALLERGY_MD_URL, { cache: "no-store" });
+    if (!res.ok) throw new Error("AccuWeather allergy source unavailable");
+    const markdown = await res.text();
     state.allergy = {
       ...state.allergy,
-      ...buildLiveAllergyFromOpenMeteo(livePayload)
+      ...buildAllergyFromAccuWeatherMarkdown(markdown)
     };
     state.allergyFetchedAt = Date.now();
   } catch (liveErr) {
@@ -1148,6 +1301,7 @@ function renderHealth(map, logs) {
 
 function renderRtahPanel(filteredMap, logs, rtahData, tunnelStatus) {
   const panel = document.getElementById("rtahPanel");
+  if (!panel) return;
   const dashboardLast = logs[logs.length - 1] || null;
   const profile = rtahData || {};
   const liveTunnel = tunnelStatus || {};
@@ -1319,32 +1473,88 @@ function renderQuickAccessPanel(quickAccess, accessData, rtahData, tunnelStatus)
   `;
 }
 
-function macPathToFileUrl(path) {
-  const normalized = String(path || "").replaceAll("\\", "/");
-  return `file://${encodeURI(normalized)}`;
+function shortcutRunUrl(name) {
+  return `shortcuts://x-callback-url/run-shortcut?name=${encodeURIComponent(String(name || ""))}`;
 }
 
 function isMobileClient() {
   const ua = navigator.userAgent || "";
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua);
+  const isAppleTouchDesktop = /Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1;
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua) || isAppleTouchDesktop;
 }
 
-function openConventionFolder() {
+function isMacDesktopClient() {
+  const ua = navigator.userAgent || "";
+  return /Macintosh|Mac OS X/i.test(ua) && !isMobileClient();
+}
+
+function isSafariBrowser() {
+  const ua = navigator.userAgent || "";
+  return /Safari/i.test(ua) && !/Chrome|Chromium|Edg|OPR/i.test(ua);
+}
+
+async function openConventionFolder() {
   const hint = document.getElementById("jwConventionHint");
   if (isMobileClient()) {
-    if (hint) hint.textContent = "Opening Google Drive app (fallback to browser link if needed).";
-    window.location.href = JW_CONVENTION.driveAppUrl;
-    setTimeout(() => {
-      window.open(JW_CONVENTION.driveUrl, "_blank", "noopener,noreferrer");
-    }, 700);
+    if (hint) hint.textContent = "Opening Drive folder...";
+    // Universal link targets the specific folder and can hand off to the Drive app on iOS/iPadOS.
+    window.location.href = JW_CONVENTION.driveUrl;
     return;
   }
 
-  const fileUrl = macPathToFileUrl(JW_CONVENTION.macPath);
-  if (hint) {
-    hint.textContent = "Attempting to open Finder path. If blocked by browser security, use Copy Path and Finder > Go to Folder.";
+  if (isMacDesktopClient()) {
+    const runUrl = shortcutRunUrl(JW_CONVENTION.macShortcutName);
+    if (hint) {
+      hint.textContent = `Running shortcut "${JW_CONVENTION.macShortcutName}"...`;
+    }
+    try {
+      await navigator.clipboard.writeText(JW_CONVENTION.macPath);
+    } catch (err) {
+      // best effort
+    }
+    let fallbackTimer = null;
+    let setupTimer = null;
+    const clearHelperTimer = () => {
+      if (fallbackTimer) {
+        clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+      if (setupTimer) {
+        clearTimeout(setupTimer);
+        setupTimer = null;
+      }
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+      window.removeEventListener("pagehide", onPageHide);
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") clearHelperTimer();
+    };
+    const onPageHide = () => {
+      clearHelperTimer();
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    window.addEventListener("pagehide", onPageHide);
+    fallbackTimer = setTimeout(() => {
+      if (document.visibilityState !== "visible") return;
+      window.location.href = runUrl;
+    }, 250);
+    setupTimer = setTimeout(() => {
+      clearHelperTimer();
+      if (document.visibilityState !== "visible" || !hint) return;
+      hint.textContent =
+        `If nothing opened: verify Shortcut "${JW_CONVENTION.macShortcutName}" exists and opens ${JW_CONVENTION.macPath}. Path already copied (Shift+Cmd+G works now).`;
+    }, 1400);
+    if (isSafariBrowser() && hint) {
+      hint.textContent = `Running shortcut "${JW_CONVENTION.macShortcutName}" (Safari-safe flow).`;
+    }
+    window.location.href = runUrl;
+    return;
   }
-  window.open(fileUrl, "_blank", "noopener,noreferrer");
+
+  if (hint) {
+    hint.textContent = "Opening Drive web.";
+  }
+  window.open(JW_CONVENTION.driveUrl, "_blank", "noopener,noreferrer");
 }
 
 async function copyConventionPath() {
@@ -1357,44 +1567,75 @@ async function copyConventionPath() {
   }
 }
 
+async function openContractsSupportFolder() {
+  if (isMobileClient()) {
+    window.location.href = CONTRACTS_SUPPORT.driveUrl;
+    return;
+  }
+
+  if (isMacDesktopClient()) {
+    const runUrl = shortcutRunUrl(CONTRACTS_SUPPORT.macShortcutName);
+    try {
+      await navigator.clipboard.writeText(CONTRACTS_SUPPORT.macPath);
+    } catch (err) {
+      // best effort
+    }
+    window.location.href = runUrl;
+    return;
+  }
+
+  window.open(CONTRACTS_SUPPORT.driveUrl, "_blank", "noopener,noreferrer");
+}
+
+async function openContractsSeTexasFolder() {
+  if (isMobileClient()) {
+    window.location.href = CONTRACTS_SE_TEXAS.driveUrl;
+    return;
+  }
+
+  if (isMacDesktopClient()) {
+    const runUrl = shortcutRunUrl(CONTRACTS_SE_TEXAS.macShortcutName);
+    try {
+      await navigator.clipboard.writeText(CONTRACTS_SE_TEXAS.macPath);
+    } catch (err) {
+      // best effort
+    }
+    window.location.href = runUrl;
+    return;
+  }
+
+  window.open(CONTRACTS_SE_TEXAS.driveUrl, "_blank", "noopener,noreferrer");
+}
+
 function renderJwPanel() {
   const panel = document.getElementById("jwPanel");
   if (!panel) return;
 
   panel.innerHTML = `
     <div class="jw-grid">
-      <div class="jw-box">
+      <div class="jw-box jw-convention-card">
         <h3>2026 Convention</h3>
-        <p>Quick-open the 2026 Regional folder. Phone opens Drive app. Desktop tries Finder path.</p>
         <div class="jw-actions">
-          <button id="openConventionFolderBtn" class="action-btn" type="button">Open 2026 Convention Folder</button>
-          <button id="copyConventionPathBtn" class="action-btn secondary-btn" type="button">Copy Mac Path</button>
-          <a class="action-btn secondary-btn action-link" href="${JW_CONVENTION.driveUrl}" target="_blank" rel="noopener noreferrer">Open Drive Web</a>
+          <button id="openConventionFolderBtn" class="action-btn action-btn-lg" type="button">2026 Convention Google Drive</button>
+          <button id="openConventionNotebookBtn" class="action-btn action-btn-lg" type="button">Convention Guideline and Operating Plan AI</button>
+          <a class="action-btn secondary-btn action-link" href="./personnel-list.html">Personnel List</a>
         </div>
-        <div class="kv-list">
-          <div class="kv-row"><span class="k">Drive Folder</span><span class="v"><a href="${JW_CONVENTION.driveUrl}" target="_blank" rel="noopener noreferrer">${JW_CONVENTION.driveUrl}</a></span></div>
-          <div class="kv-row"><span class="k">Mac Path</span><span class="v"><code>${JW_CONVENTION.macPath}</code></span></div>
+      </div>
+      <div class="jw-box">
+        <h3>Operating Plan</h3>
+        <div class="jw-actions">
+          <a class="action-btn action-btn-lg action-link" href="https://rtah-op-app.vercel.app/public/index.html" target="_blank" rel="noopener noreferrer">RTAH OP App</a>
         </div>
-        <div id="jwConventionHint" class="jw-hint"></div>
       </div>
       <div class="jw-box">
         <h3>Contracts Team</h3>
-        <p>Quick access for Contracts Team tools and links.</p>
         <div class="jw-actions">
-          <button id="openNotebookPopupBtn" class="action-btn action-btn-lg" type="button">Ask NotebookLM</button>
-          <a class="action-btn action-link" href="https://rtah-op-app.vercel.app" target="_blank" rel="noopener noreferrer">Open Contracts Public Link</a>
-          <a class="action-btn secondary-btn action-link" href="${CONTRACTS_NOTEBOOKLM_URL}" target="_blank" rel="noopener noreferrer">Open NotebookLM</a>
+          <button id="openContractsSupportBtn" class="action-btn action-btn-lg" type="button">Contracts Support Team</button>
+          <button id="openContractsSeTexasBtn" class="action-btn action-btn-lg" type="button">Contract Team - SE Texas</button>
         </div>
-        <div class="kv-list">
-          <div class="kv-row"><span class="k">Public Link</span><span class="v"><a href="https://rtah-op-app.vercel.app" target="_blank" rel="noopener noreferrer">https://rtah-op-app.vercel.app</a></span></div>
-          <div class="kv-row"><span class="k">NotebookLM</span><span class="v"><a href="${CONTRACTS_NOTEBOOKLM_URL}" target="_blank" rel="noopener noreferrer">${CONTRACTS_NOTEBOOKLM_URL}</a></span></div>
-          <div class="kv-row"><span class="k">Status</span><span class="v">Contracts quick-link active.</span></div>
-        </div>
-        <div id="contractsChat" class="contracts-chat"></div>
       </div>
     </div>
   `;
-  renderContractsChat();
 }
 
 function renderCommandCenterAccessPanel(accessData) {
@@ -1458,10 +1699,6 @@ function renderAll() {
   if (!state.rawMap) return;
   const filteredMap = applyFilters(state.rawMap);
 
-  document.getElementById("updatedOn").textContent = `updated_on: ${state.rawMap.updated_on || "n/a"}`;
-  document.getElementById("nodeCount").textContent = `nodes: ${filteredMap.nodes.length}/${state.rawMap.nodes.length}`;
-  document.getElementById("edgeCount").textContent = `edges: ${filteredMap.edges.length}/${state.rawMap.edges.length}`;
-
   renderDailyTextHero();
   renderJwPanel();
   renderQuickAccessPanel(state.quickAccess, state.commandCenterAccess, state.rtahData, state.tunnelStatus);
@@ -1469,6 +1706,101 @@ function renderAll() {
   renderCommandCenterAccessPanel(state.commandCenterAccess);
   renderWeatherWidget();
   renderAllergyWidget();
+}
+
+function bindPullToRefresh() {
+  if (state.pullRefreshBound) return;
+  const indicator = document.getElementById("pullRefreshIndicator");
+  const label = document.getElementById("pullRefreshLabel");
+  if (!indicator || !label) return;
+
+  let startY = 0;
+  let distance = 0;
+  let pulling = false;
+  let refreshing = false;
+
+  const applyIndicatorPosition = (offset) => {
+    const clamped = Math.max(0, Math.min(140, offset));
+    const y = -140 + clamped;
+    indicator.style.transform = `translate(-50%, ${y}%)`;
+  };
+
+  const resetIndicator = () => {
+    distance = 0;
+    pulling = false;
+    indicator.classList.remove("is-visible", "is-ready");
+    applyIndicatorPosition(0);
+    label.textContent = "Pull to refresh";
+  };
+
+  const triggerRefresh = async () => {
+    refreshing = true;
+    indicator.classList.add("is-visible", "is-ready", "is-refreshing");
+    applyIndicatorPosition(140);
+    label.textContent = "Refreshing...";
+    try {
+      await refreshData();
+    } catch (err) {
+      // Keep UI resilient if refresh fails.
+    } finally {
+      refreshing = false;
+      setTimeout(() => {
+        indicator.classList.remove("is-refreshing");
+        resetIndicator();
+      }, 220);
+    }
+  };
+
+  document.addEventListener(
+    "touchstart",
+    (event) => {
+      if (refreshing || window.scrollY > 0) return;
+      if (!event.touches || event.touches.length !== 1) return;
+      startY = event.touches[0].clientY;
+      distance = 0;
+      pulling = true;
+    },
+    { passive: true }
+  );
+
+  document.addEventListener(
+    "touchmove",
+    (event) => {
+      if (!pulling || refreshing) return;
+      const touchY = event.touches && event.touches[0] ? event.touches[0].clientY : startY;
+      distance = Math.max(0, touchY - startY);
+      if (distance <= 0) {
+        resetIndicator();
+        return;
+      }
+      if (window.scrollY > 0) {
+        resetIndicator();
+        return;
+      }
+      event.preventDefault();
+      indicator.classList.add("is-visible");
+      const ready = distance >= PULL_REFRESH_TRIGGER_PX;
+      indicator.classList.toggle("is-ready", ready);
+      label.textContent = ready ? "Release to refresh" : "Pull to refresh";
+      applyIndicatorPosition(distance);
+    },
+    { passive: false }
+  );
+
+  document.addEventListener(
+    "touchend",
+    () => {
+      if (!pulling || refreshing) return;
+      const shouldRefresh = distance >= PULL_REFRESH_TRIGGER_PX;
+      resetIndicator();
+      if (shouldRefresh) {
+        triggerRefresh();
+      }
+    },
+    { passive: true }
+  );
+
+  state.pullRefreshBound = true;
 }
 
 function setSelectOptions(selectId, values, allLabel) {
@@ -1502,6 +1834,7 @@ function syncFilterControls() {
 
 function bindControls() {
   if (state.controlsBound) return;
+  bindPullToRefresh();
 
   const laneFilter = document.getElementById("laneFilter");
   if (laneFilter) {
@@ -1562,9 +1895,47 @@ function bindControls() {
     dailyTextLangToggle.addEventListener("change", () => {
       state.dailyTextLang = dailyTextLangToggle.checked ? "es" : "en";
       localStorage.setItem(DAILY_TEXT_LANG_KEY, state.dailyTextLang);
-      state.dailyTextFetchedAt = 0;
-      refreshDailyText(true).catch(() => {});
+      const cached = loadDailyTextCacheForLang(state.dailyTextLang);
+      if (cached) {
+        state.dailyText = {
+          ...state.dailyText,
+          ...cached,
+          status: "ready"
+        };
+      }
+      state.dailyTextFetchedAtByLang[state.dailyTextLang] = 0;
       renderDailyTextHero();
+      refreshDailyText(true, state.dailyTextLang).catch(() => {});
+    });
+  }
+  const dailyTextHero = document.getElementById("dailyTextHero");
+  if (dailyTextHero) {
+    dailyTextHero.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest("a, button, input, label")) return;
+      state.dailyTextExpanded = !state.dailyTextExpanded;
+      localStorage.setItem(DAILY_TEXT_EXPANDED_KEY, state.dailyTextExpanded ? "1" : "0");
+      renderDailyTextHero();
+    });
+  }
+  const weatherWidget = document.getElementById("weatherWidget");
+  if (weatherWidget) {
+    weatherWidget.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest("a, button, input, label")) return;
+      state.weatherExpanded = !state.weatherExpanded;
+      localStorage.setItem(WEATHER_EXPANDED_KEY, state.weatherExpanded ? "1" : "0");
+      renderWeatherWidget();
+    });
+  }
+  const allergyWidget = document.getElementById("allergyWidget");
+  if (allergyWidget) {
+    allergyWidget.addEventListener("click", (event) => {
+      const target = event.target;
+      if (target instanceof HTMLElement && target.closest("a, button, input, label")) return;
+      state.allergyExpanded = !state.allergyExpanded;
+      localStorage.setItem(ALLERGY_EXPANDED_KEY, state.allergyExpanded ? "1" : "0");
+      renderAllergyWidget();
     });
   }
   document.addEventListener("click", (event) => {
@@ -1584,6 +1955,15 @@ function bindControls() {
     }
     if (target.id === "openNotebookPopupBtn") {
       openNotebookLmPopup();
+    }
+    if (target.id === "openConventionNotebookBtn") {
+      openNotebookLmPopup();
+    }
+    if (target.id === "openContractsSupportBtn") {
+      openContractsSupportFolder();
+    }
+    if (target.id === "openContractsSeTexasBtn") {
+      openContractsSeTexasFolder();
     }
   });
   document.addEventListener("keydown", (event) => {
@@ -1613,6 +1993,9 @@ function updateAutoRefreshTimer() {
 async function refreshData() {
   const savedLang = localStorage.getItem(DAILY_TEXT_LANG_KEY);
   state.dailyTextLang = savedLang === "es" ? "es" : "en";
+  state.dailyTextExpanded = localStorage.getItem(DAILY_TEXT_EXPANDED_KEY) === "1";
+  state.weatherExpanded = localStorage.getItem(WEATHER_EXPANDED_KEY) === "1";
+  state.allergyExpanded = localStorage.getItem(ALLERGY_EXPANDED_KEY) === "1";
   const [mapText, logText, rtahData, tunnelStatus, commandCenterAccess, quickAccess] = await Promise.all([
     loadText(MAP_PATHS),
     loadText(LOG_PATHS),
@@ -1627,7 +2010,7 @@ async function refreshData() {
   state.tunnelStatus = tunnelStatus;
   state.commandCenterAccess = commandCenterAccess;
   state.quickAccess = quickAccess;
-  refreshDailyText().catch(() => {});
+  refreshDailyText(true).catch(() => {});
   await refreshWeatherData();
   await refreshAllergyData(true);
 

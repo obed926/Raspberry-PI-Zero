@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lista de Personal de Asamblea Regional - Rosenberg TX 2026</title>
+    <style>
+      :root {
+        --bg: #0d1115;
+        --card: #141a21;
+        --line: #2f3843;
+        --text: #e8edf2;
+        --muted: #9aa8b6;
+        --accent: #9dff4b;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Space Grotesk", "Segoe UI", sans-serif;
+        color: var(--text);
+        background: radial-gradient(1100px 700px at 0% 0%, rgba(157, 255, 75, 0.08), transparent 60%), var(--bg);
+      }
+      .wrap {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 1rem;
+      }
+      .head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.7rem;
+        margin-bottom: 0.8rem;
+      }
+      h1 {
+        margin: 0;
+        font-size: clamp(1.2rem, 3vw, 1.8rem);
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        text-decoration: none;
+        color: #121712;
+        background: var(--accent);
+        border: 1px solid #89df3e;
+        padding: 0.42rem 0.65rem;
+        border-radius: 9px;
+        font-size: 0.86rem;
+        font-weight: 700;
+      }
+      .meta {
+        margin: 0 0 0.65rem;
+        color: var(--muted);
+        font-size: 0.84rem;
+      }
+      .groups {
+        display: grid;
+        gap: 0.7rem;
+      }
+      .track-block {
+        padding: 0.7rem 0.8rem 0.85rem;
+        border-top: 1px solid #27303a;
+      }
+      .track-title {
+        margin: 0 0 0.5rem;
+        font-size: 0.78rem;
+        letter-spacing: 0.08em;
+        color: #cce8a7;
+      }
+      .dept-title {
+        margin: 0.55rem 0 0.4rem;
+        font-size: 0.82rem;
+        color: var(--muted);
+      }
+      .group-card {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: var(--card);
+        overflow: hidden;
+      }
+      .group-card summary {
+        list-style: none;
+        cursor: pointer;
+        padding: 0.65rem 0.8rem;
+        border-bottom: 1px solid #27303a;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.65rem;
+      }
+      .group-card summary::-webkit-details-marker {
+        display: none;
+      }
+      .group-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+      }
+      .group-count {
+        font-size: 0.76rem;
+        color: var(--muted);
+      }
+      .table-wrap {
+        overflow: auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 680px;
+      }
+      th,
+      td {
+        border-bottom: 1px solid #27303a;
+        padding: 0.48rem 0.55rem;
+        text-align: left;
+        font-size: 0.84rem;
+        vertical-align: top;
+      }
+      th {
+        position: sticky;
+        top: 0;
+        background: #1a222d;
+        color: #dfffbf;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.72rem;
+      }
+      .status {
+        padding: 0.9rem;
+        color: var(--muted);
+      }
+      .error {
+        color: #ffb37a;
+      }
+      td a {
+        color: var(--text);
+        text-decoration: none;
+      }
+      td a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="head">
+        <h1>Lista de Personal de Asamblea Regional - Rosenberg TX 2026, Español #3, 3-5 de julio, 2026</h1>
+        <a class="btn" href="./index.html">Back to Dashboard</a>
+      </div>
+      <p id="meta" class="meta">Cargando lista de personal...</p>
+      <div id="status" class="status">Obteniendo datos exportados...</div>
+      <section id="groups" class="groups" hidden></section>
+    </div>
+
+    <script>
+      const SHEET_URL =
+        "https://docs.google.com/spreadsheets/d/1Tg9WU2nEp_-khz-YnQ8SzjQTF_KXBqoj/export?format=csv&gid=37078085";
+      const SECTION_CONFIG = [
+        {
+          title: "Comité de Asamblea",
+          type: "committee",
+          departments: [
+            "Coordinador de Comité de Asamblea",
+            "Auxiliar de Coordinador de Comité de Asamblea",
+            "Superintendente de Programa",
+            "Auxiliar del Superintendente de Programa",
+            "Superintendente de Alojamiento",
+            "Auxiliar de Superintendente de Alojamiento",
+          ],
+        },
+        {
+          title: "Coordinador",
+          type: "departments",
+          departments: ["Seguridad", "Acomodadores", "Contabilidad", "Estacionamiento", "Primeros Auxilios"],
+        },
+        {
+          title: "Programa",
+          type: "departments",
+          departments: ["Audio y Video", "Bautismo"],
+        },
+        {
+          title: "Alojamiento",
+          type: "departments",
+          departments: ["Alojamiento", "Limpieza", "Objetos Perdidos y Guardarropa / Información y Servicio Voluntario"],
+        },
+        {
+          title: "Hospitalidad",
+          type: "departments",
+          departments: ["Hospitalidad"],
+        },
+      ];
+
+      function esc(value) {
+        return String(value || "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#39;");
+      }
+
+      function norm(value) {
+        return String(value || "")
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/\s+/g, " ")
+          .trim();
+      }
+
+      function parseCsv(text) {
+        const rows = [];
+        let row = [];
+        let cell = "";
+        let i = 0;
+        let inQuotes = false;
+        while (i < text.length) {
+          const ch = text[i];
+          if (inQuotes) {
+            if (ch === '"') {
+              if (text[i + 1] === '"') {
+                cell += '"';
+                i += 1;
+              } else {
+                inQuotes = false;
+              }
+            } else {
+              cell += ch;
+            }
+          } else if (ch === '"') {
+            inQuotes = true;
+          } else if (ch === ",") {
+            row.push(cell);
+            cell = "";
+          } else if (ch === "\n") {
+            row.push(cell);
+            rows.push(row);
+            row = [];
+            cell = "";
+          } else if (ch === "\r") {
+            // ignore
+          } else {
+            cell += ch;
+          }
+          i += 1;
+        }
+        if (cell.length || row.length) {
+          row.push(cell);
+          rows.push(row);
+        }
+        return rows.filter((r) => r.some((c) => String(c || "").trim()));
+      }
+
+      function setStatus(text, isError = false) {
+        const status = document.getElementById("status");
+        status.textContent = text;
+        status.className = isError ? "status error" : "status";
+      }
+
+      function findHeaderRow(rows) {
+        return rows.findIndex((row) => {
+          const joined = norm(row.join(" "));
+          return joined.includes("departamento") && joined.includes("responsabilidad") && joined.includes("nombre");
+        });
+      }
+
+      function columnIndex(header, keywords) {
+        return header.findIndex((cell) => {
+          const text = norm(cell);
+          return keywords.every((k) => text.includes(k));
+        });
+      }
+
+      function tableMarkup(rows) {
+        const body = rows
+          .map(
+            (entry) => {
+              const phoneRaw = String(entry.phone || "").trim();
+              const phoneHref = phoneRaw.replace(/[^\d+]/g, "");
+              const phoneHtml = phoneHref ? `<a href="tel:${esc(phoneHref)}">${esc(phoneRaw)}</a>` : "-";
+              const emailRaw = String(entry.email || "").trim();
+              const emailHtml = emailRaw ? `<a href="mailto:${esc(emailRaw)}">${esc(emailRaw)}</a>` : "-";
+              return `<tr><td>${esc(entry.role || "-")}</td><td>${esc(entry.name)}</td><td>${phoneHtml}</td><td>${emailHtml}</td><td>${esc(entry.cong)}</td></tr>`;
+            }
+          )
+          .join("");
+        return `<div class="table-wrap"><table><thead><tr><th>Responsabilidad</th><th>Nombre</th><th>Teléfono</th><th>Correo</th><th>Congregación</th></tr></thead><tbody>${body}</tbody></table></div>`;
+      }
+
+      function renderTable(rows) {
+        if (!rows.length) {
+          setStatus("No se encontraron filas de personal.");
+          return;
+        }
+
+        const headerRowIndex = findHeaderRow(rows);
+        if (headerRowIndex < 0) {
+          setStatus("No se encontró la fila de encabezados esperada.", true);
+          return;
+        }
+
+        const header = rows[headerRowIndex].map((h) => String(h || "").trim());
+        const bodyRows = rows.slice(headerRowIndex + 1);
+        const col = {
+          dept: columnIndex(header, ["departamento"]),
+          role: columnIndex(header, ["responsabilidad"]),
+          name: columnIndex(header, ["nombre"]),
+          phone: columnIndex(header, ["telefono"]),
+          email: columnIndex(header, ["correo", "jw.org"]),
+          cong: columnIndex(header, ["congregacion"]),
+        };
+
+        const required = ["dept", "role", "name", "phone", "email", "cong"];
+        const missing = required.filter((key) => col[key] < 0);
+        if (missing.length) {
+          setStatus(`Faltan columnas requeridas: ${missing.join(", ")}`, true);
+          return;
+        }
+
+        const byDept = new Map();
+        let lastDept = "";
+        let blockIndex = 0;
+        for (const row of bodyRows) {
+          const deptRaw = String(row[col.dept] || "").trim();
+          const role = String(row[col.role] || "").trim();
+          const name = String(row[col.name] || "").trim();
+          const isHeaderRepeat = norm(deptRaw) === "departamento" && norm(role) === "responsabilidad" && norm(name) === "nombre";
+          if (isHeaderRepeat) {
+            blockIndex += 1;
+            continue;
+          }
+          if (!name) continue;
+          let dept = deptRaw || lastDept || "Sin departamento";
+          if (deptRaw === "-") dept = lastDept || "Sin departamento";
+          if (deptRaw && deptRaw !== "-") lastDept = deptRaw;
+          if (norm(dept) === "chairmans office") continue;
+          if (!byDept.has(dept)) byDept.set(dept, []);
+          byDept.get(dept).push({
+            name,
+            role,
+            phone: String(row[col.phone] || "").trim(),
+            email: String(row[col.email] || "").trim(),
+            cong: String(row[col.cong] || "").trim(),
+            blockIndex,
+          });
+        }
+
+        const byDeptNorm = new Map(Array.from(byDept.entries()).map(([dept, members]) => [norm(dept), { dept, members }]));
+        const container = document.getElementById("groups");
+        const usedDept = new Set();
+
+        container.innerHTML = SECTION_CONFIG.map((section, sectionIndex) => {
+          if (section.type === "committee") {
+            const committeePeople = [];
+            for (const deptName of section.departments) {
+              const found = byDeptNorm.get(norm(deptName));
+              if (found) {
+                usedDept.add(norm(found.dept));
+                committeePeople.push(...found.members);
+              }
+            }
+            const committeeHtml = committeePeople.length
+              ? `<div class="track-block"><h2 class="track-title">Miembros de Comité</h2>${tableMarkup(committeePeople)}</div>`
+              : `<div class="track-block"><p class="meta">Sin datos disponibles.</p></div>`;
+            return `<details class="group-card"${sectionIndex < 2 ? " open" : ""}>
+              <summary>
+                <span class="group-title">${esc(section.title)}</span>
+                <span class="group-count">${committeePeople.length} ${committeePeople.length === 1 ? "persona" : "personas"}</span>
+              </summary>
+              ${committeeHtml}
+            </details>`;
+          }
+
+          const deptBlocks = section.departments
+            .map((deptName) => {
+              const found = byDeptNorm.get(norm(deptName));
+              if (!found) return "";
+              usedDept.add(norm(found.dept));
+              let members = found.members;
+              if (section.title === "Hospitalidad") {
+                const extra = (byDeptNorm.get("limpieza")?.members || []).filter((m) => !m.role && m.blockIndex >= 2);
+                members = [...found.members, ...extra];
+              } else if (norm(found.dept) === "limpieza") {
+                members = members.filter((m) => m.role);
+              }
+              return `<h3 class="dept-title">${esc(found.dept)}</h3>${tableMarkup(members)}`;
+            })
+            .filter(Boolean)
+            .join("");
+          const peopleCount = section.departments.reduce((sum, deptName) => {
+            const found = byDeptNorm.get(norm(deptName));
+            if (!found) return sum;
+            if (section.title === "Hospitalidad") {
+              const extra = (byDeptNorm.get("limpieza")?.members || []).filter((m) => !m.role && m.blockIndex >= 2);
+              return sum + found.members.length + extra.length;
+            }
+            if (norm(found.dept) === "limpieza") {
+              return sum + found.members.filter((m) => m.role).length;
+            }
+            return sum + found.members.length;
+          }, 0);
+          return `<details class="group-card"${sectionIndex < 2 ? " open" : ""}>
+            <summary>
+              <span class="group-title">${esc(section.title)}</span>
+              <span class="group-count">${peopleCount} ${peopleCount === 1 ? "persona" : "personas"}</span>
+            </summary>
+            <div class="track-block">${deptBlocks || '<p class="meta">Sin datos disponibles.</p>'}</div>
+          </details>`;
+        }).join("");
+
+        container.hidden = false;
+        document.getElementById("status").hidden = true;
+        const totalPeople = Array.from(byDept.values()).reduce((sum, members) => sum + members.length, 0);
+        const totalDepartments = byDept.size;
+        document.getElementById("meta").textContent =
+          `Personas: ${totalPeople} | Departamentos: ${totalDepartments} | Fuente: pestaña Personnel List exportada`;
+      }
+
+      async function loadPersonnel() {
+        try {
+          const res = await fetch(SHEET_URL, { cache: "no-store" });
+          if (!res.ok) throw new Error(`La exportación devolvió ${res.status}`);
+          const csv = await res.text();
+          const rows = parseCsv(csv);
+          renderTable(rows);
+        } catch (err) {
+          setStatus(`No se pudieron cargar los datos exportados: ${err.message}`, true);
+          document.getElementById("meta").innerHTML =
+            `Abrir hoja fuente: <a href="https://docs.google.com/spreadsheets/d/1Tg9WU2nEp_-khz-YnQ8SzjQTF_KXBqoj/edit?gid=37078085#gid=37078085" target="_blank" rel="noopener noreferrer">Pestaña Personnel List</a>`;
+        }
+      }
+
+      loadPersonnel();
+    </script>
+  </body>
+</html>
