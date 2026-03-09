@@ -1508,17 +1508,27 @@ function renderAstrosPanel() {
 
   const prev = state.astros.previousGame;
   const next = state.astros.nextGame;
+  const renderTeamWithScore = (name, logo, score) => {
+    const scoreMarkup = score !== null && score !== undefined ? `<span class="team-score">${score}</span>` : "";
+    return `${renderTeamChip(name, logo)}${scoreMarkup}`;
+  };
   const renderAstrosMatchup = (g) => {
     if (!g) return "";
     const left =
       g.homeAway === "home"
-        ? renderTeamChip(g.opponentName || "TBD", g.opponentLogo || "")
-        : renderTeamChip(g.astrosName || "Astros", g.astrosLogo || "");
+        ? renderTeamWithScore(g.opponentName || "TBD", g.opponentLogo || "", g.opponentScore)
+        : renderTeamWithScore(g.astrosName || "Astros", g.astrosLogo || "", g.astrosScore);
     const right =
       g.homeAway === "home"
-        ? renderTeamChip(g.astrosName || "Astros", g.astrosLogo || "")
-        : renderTeamChip(g.opponentName || "TBD", g.opponentLogo || "");
-    return `${left}<span class="team-vs">vs</span>${right}`;
+        ? renderTeamWithScore(g.astrosName || "Astros", g.astrosLogo || "", g.astrosScore)
+        : renderTeamWithScore(g.opponentName || "TBD", g.opponentLogo || "", g.opponentScore);
+    const statusTag =
+      g.state === "post"
+        ? `<span class="game-status-pill">F</span>`
+        : g.state === "in"
+          ? `<span class="game-status-pill">${escapeHtml(g.shortStatus || "Live")}</span>`
+          : "";
+    return `${left}<span class="team-vs">vs</span>${right}${statusTag}`;
   };
   panel.innerHTML = `
     <div class="astros-shell">
@@ -1529,15 +1539,7 @@ function renderAstrosPanel() {
           ${
             prev
               ? `<div class="astros-date">${formatCtDayLabel(prev.date)} • ${formatCtTime(prev.date)} CT</div>
-                 <div class="astros-matchup">${renderAstrosMatchup(prev)}</div>
-                 <div class="astros-score">${
-                   prev.state === "in"
-                     ? `${prev.scoreLine || "Score unavailable"} • ${prev.shortStatus || "Live"}`
-                     : prev.scoreLine ||
-                       (prev.astrosScore !== null && prev.opponentScore !== null
-                         ? `${prev.astrosName} ${prev.astrosScore} - ${prev.opponentName} ${prev.opponentScore}`
-                         : prev.shortStatus)
-                 }</div>`
+                 <div class="astros-matchup">${renderAstrosMatchup(prev)}</div>`
               : `<div class="weather-loading">No completed game found.</div>`
           }
         </div>
@@ -1546,8 +1548,7 @@ function renderAstrosPanel() {
           ${
             next
               ? `<div class="astros-date">${formatCtDayLabel(next.date)} • ${formatCtTime(next.date)} CT</div>
-                 <div class="astros-matchup">${renderAstrosMatchup(next)}</div>
-                 <div class="astros-score">${next.shortStatus}</div>`
+                 <div class="astros-matchup">${renderAstrosMatchup(next)}</div>`
               : `<div class="weather-loading">No upcoming game found.</div>`
           }
         </div>
