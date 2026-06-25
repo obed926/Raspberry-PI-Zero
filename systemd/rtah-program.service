@@ -1,0 +1,18 @@
+[Unit]
+Description=RTAH Program local TV web server
+Documentation=file:/home/obed/rtah-program/README.md
+After=local-fs.target
+Wants=local-fs.target
+
+[Service]
+Type=simple
+User=obed
+Group=obed
+WorkingDirectory=/home/obed/rtah-program
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/usr/bin/python3 /home/obed/rtah-program/serve_app.py --root /home/obed/rtah-program/app --host 0.0.0.0 --port 8080
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

@@ -15,6 +15,9 @@ Thumbs.db
 # Node
 node_modules/
 
+# Generated deployment archives
+rtah-program-*.tar.gz
+
 # IDE
 .vscode/
 .idea/
