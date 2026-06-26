@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#090a0b" />
+    <title>Live Widgets</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css?v=20260309m" />
+  </head>
+  <body class="widgets-page">
+    <div class="bg-orb bg-orb-a"></div>
+    <div class="bg-orb bg-orb-b"></div>
+    <div class="wrap">
+      <header class="hero widgets-hero">
+        <p class="eyebrow">Live Widgets</p>
+        <h1>Houston Conditions and Astros Snapshot</h1>
+        <p class="subtitle">A cleaner full-screen view for weather, allergy outlook, and the Astros game board.</p>
+        <div class="hero-actions">
+          <a class="action-btn action-link" href="./index.html">Back to Dashboard</a>
+        </div>
+      </header>
+      <main class="grid widgets-page-main">
+        <section id="astrosCard" class="card card-wide widgets-feature-card">
+          <h2>Houston Astros</h2>
+          <div id="astrosPanel">
+            <div class="weather-loading">Loading Astros games...</div>
+          </div>
+        </section>
+
+        <div class="widget-grid widget-grid-outside widgets-page-grid">
+          <div class="widget-box weather-widget-box">
+            <h3>Weather</h3>
+            <div id="weatherWidget" class="weather-widget">
+              <div class="weather-loading">Loading weather...</div>
+            </div>
+          </div>
+
+          <div class="widget-box weather-widget-box">
+            <h3>Allergy Forecast</h3>
+            <div id="allergyWidget" class="weather-widget">
+              <div class="weather-loading">Loading allergy forecast...</div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <script type="module" src="./main.js?v=20260318e"></script>
+  </body>
+</html>

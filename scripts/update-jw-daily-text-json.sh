@@ -54,7 +54,7 @@ function normalizeTextForMatch(value) {
 }
 
 function isDailyHeading(line, lang) {
-  const text = String(line || "").trim();
+  const text = String(line || "").trim().replace(/^##\s+/, "");
   if (lang === "es") {
     return /^(Lunes|Martes|Miercoles|Miércoles|Jueves|Viernes|Sabado|Sábado|Domingo)\s+\d{1,2}\s+de\s+[A-Za-záéíóúñ]+$/i.test(
       text
@@ -69,11 +69,12 @@ function parseEntries(text, lang) {
   for (let i = 0; i < lines.length; i += 1) {
     const heading = lines[i].trim();
     if (!isDailyHeading(heading, lang)) continue;
-    if (!/^[-=]{3,}$/.test((lines[i + 1] || "").trim())) continue;
-    let j = i + 2;
+    const headingText = heading.replace(/^##\s+/, "").trim();
+    const hasSetextUnderline = /^[-=]{3,}$/.test((lines[i + 1] || "").trim());
+    let j = i + (hasSetextUnderline ? 2 : 1);
     while (j < lines.length && !isDailyHeading(lines[j].trim(), lang)) j += 1;
 
-    const block = lines.slice(i + 2, j).join("\n");
+    const block = lines.slice(i + (hasSetextUnderline ? 2 : 1), j).join("\n");
     const blockLines = block.split("\n").map((line) => line.trim()).filter(Boolean);
     const verseLine = blockLines.find((line) => /—/.test(line) || /_/.test(line)) || blockLines[0] || "";
     const cutoff = blockLines.findIndex(
@@ -94,7 +95,7 @@ function parseEntries(text, lang) {
       /\[(?:Examining the Scriptures Daily|Examinemos las Escrituras todos los días)[^\]]*\]\((https?:\/\/[^)]+)\)/
     );
     rows.push({
-      date_label: heading || "Daily Text",
+      date_label: headingText || "Daily Text",
       verse: stripMarkdownToText(verseLine || "Daily scripture"),
       body: stripMarkdownToText(bodyLines.join(" ") || "Daily commentary unavailable."),
       source_url: sourceMatch ? sourceMatch[1] : sourcePageUrl

@@ -21,6 +21,11 @@
       <span id="pullRefreshLabel" class="pull-refresh-label">Pull to refresh</span>
     </div>
     <div class="wrap">
+      <a class="ticker-shell ticker-link" href="./widgets.html" aria-label="Open live widgets page">
+        <div id="statusTicker" class="ticker-track-wrap">
+          <div class="ticker-loading">Loading ticker...</div>
+        </div>
+      </a>
       <header id="dailyTextHero" class="hero" aria-expanded="false">
         <a class="eyebrow" href="https://wol.jw.org/en/" target="_blank" rel="noopener noreferrer">JW Daily Text</a>
         <h1 id="dailyTextDate">Loading daily text...</h1>
@@ -39,33 +44,6 @@
       </header>
 
       <main class="grid">
-        <div class="widget-grid widget-grid-outside">
-          <div class="widget-box weather-widget-box">
-            <h3>Weather</h3>
-            <div id="weatherWidget" class="weather-widget">
-              <div class="weather-loading">Loading weather...</div>
-            </div>
-          </div>
-
-          <div class="widget-box weather-widget-box">
-            <h3>Allergy Forecast</h3>
-            <div id="allergyWidget" class="weather-widget">
-              <div class="weather-loading">Loading allergy forecast...</div>
-            </div>
-          </div>
-        </div>
-
-        <section id="wbcCard" class="card card-wide" hidden>
-          <h2>World Baseball Classic 2026</h2>
-          <div id="wbcPanel"></div>
-        </section>
-        <section id="astrosCard" class="card card-wide">
-          <h2>Houston Astros</h2>
-          <div id="astrosPanel">
-            <div class="weather-loading">Loading Astros games...</div>
-          </div>
-        </section>
-
         <section class="card card-wide">
           <h2>JW</h2>
           <div id="jwPanel"></div>
@@ -74,6 +52,7 @@
         <section class="card card-wide">
           <h2>Operations Pages</h2>
           <div class="jw-actions">
+            <a class="action-btn action-btn-lg action-link" href="./widgets.html">Live Widgets</a>
             <a class="action-btn action-btn-lg action-link" href="./command-center-access.html">Command Center Access</a>
             <a class="action-btn action-btn-lg action-link" href="./rtah-op-app.html">RTAH OP App</a>
             <a class="action-btn action-btn-lg action-link" href="./quick-access.html">Quick Access</a>
@@ -82,6 +61,6 @@
       </main>
     </div>
 
-    <script type="module" src="./main.js?v=20260309ar"></script>
+    <script type="module" src="./main.js?v=20260318e"></script>
   </body>
 </html>

@@ -8,13 +8,9 @@ const WEATHER_FORECAST_URL = "https://api.open-meteo.com/v1/forecast";
 const AIR_QUALITY_URL = "https://air-quality-api.open-meteo.com/v1/air-quality";
 const ACCUWEATHER_ALLERGY_MD_URL = "https://r.jina.ai/http://www.accuweather.com/en/us/houston/77002/weather-forecast/351197";
 const ALLERGY_DATA_PATHS = ["./data/houston-allergy.json"];
-const WBC_SCOREBOARD_URL = "https://site.api.espn.com/apis/site/v2/sports/baseball/world-baseball-classic/scoreboard";
-const WBC_STANDINGS_URL =
-  "https://site.api.espn.com/apis/v2/sports/baseball/world-baseball-classic/standings?region=us&lang=en&contentorigin=espn";
 const ASTROS_TEAM_ID = "18";
 const ASTROS_SCHEDULE_URL = `https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/teams/${ASTROS_TEAM_ID}/schedule`;
 const JINA_HTTP_PREFIX = "https://r.jina.ai/http://";
-const WBC_VISIBLE_THROUGH_CT = "2026-03-18";
 const DAILY_TEXT_SOURCES = {
   en: {
     label: "English",
@@ -31,7 +27,7 @@ const DAILY_TEXT_SOURCES = {
 };
 const WEATHER_REFRESH_WINDOW_MS = 10 * 60 * 1000;
 const DAILY_TEXT_REFRESH_WINDOW_MS = 6 * 60 * 60 * 1000;
-const DAILY_TEXT_LIVE_TIMEOUT_MS = 8000;
+const DAILY_TEXT_LIVE_TIMEOUT_MS = 12000;
 const DAILY_TEXT_CACHE_KEY = "jwDailyTextCacheV1";
 const DAILY_TEXT_LANG_KEY = "dailyTextLang";
 const DAILY_TEXT_EXPANDED_KEY = "dailyTextExpanded";
@@ -80,15 +76,6 @@ const state = {
   },
   weatherFetchedAt: 0,
   weatherExpanded: false,
-  wbc: {
-    visible: false,
-    expanded: false,
-    todayGames: [],
-    allGames: [],
-    standings: [],
-    updatedAt: "",
-    status: "loading"
-  },
   astros: {
     previousGame: null,
     nextGame: null,
@@ -273,15 +260,29 @@ function buildDailyTextLiveUrl(source) {
   return `${source.liveBaseUrl}/${year}/${month}/${day}`;
 }
 
-function isDailyTextHeading(line, lang) {
-  if (lang === "es") {
-    return /^(Lunes|Martes|Miercoles|Miércoles|Jueves|Viernes|Sabado|Sábado|Domingo)\s+\d{1,2}\s+de\s+[A-Za-záéíóúñ]+$/i.test(
-      String(line || "").trim()
-    );
-  }
-  return /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+[A-Za-z]+\s+\d{1,2}$/i.test(
-    String(line || "").trim()
+function isDailyTextEntryCurrent(entry, lang) {
+  if (!entry) return false;
+  const label = String(entry.dateLabel || entry.date_label || "").trim();
+  if (!label) return false;
+
+  const today = new Date();
+  const monthNorm = normalizeTextForMatch(
+    today.toLocaleDateString(lang === "es" ? "es-ES" : "en-US", { month: "long" })
   );
+  const day = String(today.getDate());
+  const todayLabelNorm = normalizeTextForMatch(buildTodayDailyTextLabel(lang));
+  const labelNorm = normalizeTextForMatch(label);
+
+  if (labelNorm === todayLabelNorm) return true;
+  return lang === "es" ? labelNorm.includes(`${day} de ${monthNorm}`) : labelNorm.includes(`${monthNorm} ${day}`);
+}
+
+function isDailyTextHeading(line, lang) {
+  const text = String(line || "").trim().replace(/^##\s+/, "");
+  if (lang === "es") {
+    return /^(Lunes|Martes|Miercoles|Miércoles|Jueves|Viernes|Sabado|Sábado|Domingo)\s+\d{1,2}\s+de\s+[A-Za-záéíóúñ]+$/i.test(text);
+  }
+  return /^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),\s+[A-Za-z]+\s+\d{1,2}$/i.test(text);
 }
 
 function parseDailyTextEntries(markdown, lang, fallbackSourceUrl) {
@@ -292,13 +293,14 @@ function parseDailyTextEntries(markdown, lang, fallbackSourceUrl) {
   for (let i = 0; i < lines.length; i += 1) {
     const heading = lines[i].trim();
     if (!isDailyTextHeading(heading, lang)) continue;
-    if (!/^[-=]{3,}$/.test((lines[i + 1] || "").trim())) continue;
 
-    let j = i + 2;
+    const headingText = heading.replace(/^##\s+/, "").trim();
+    const hasSetextUnderline = /^[-=]{3,}$/.test((lines[i + 1] || "").trim());
+    let j = i + (hasSetextUnderline ? 2 : 1);
     while (j < lines.length && !isDailyTextHeading(lines[j].trim(), lang)) {
       j += 1;
     }
-    const block = lines.slice(i + 2, j).join("\n").trim();
+    const block = lines.slice(i + (hasSetextUnderline ? 2 : 1), j).join("\n").trim();
     const blockLines = block
       .split("\n")
       .map((line) => line.trim())
@@ -320,7 +322,7 @@ function parseDailyTextEntries(markdown, lang, fallbackSourceUrl) {
       /\[(?:Examining the Scriptures Daily|Examinemos las Escrituras todos los días)[^\]]*\]\((https?:\/\/[^)]+)\)/
     );
     entries.push({
-      dateLabel: heading || "Daily Text",
+      dateLabel: headingText || "Daily Text",
       verse: stripMarkdownToText(verseLine || "Daily scripture unavailable."),
       body: stripMarkdownToText(bodyLines.join(" ") || "Daily commentary unavailable."),
       sourceUrl: sourceMatch ? sourceMatch[1] : fallbackSourceUrl
@@ -375,13 +377,26 @@ async function fetchTextWithTimeout(url, timeoutMs) {
 async function fetchDailyTextForLang(lang) {
   const source = DAILY_TEXT_SOURCES[lang] || DAILY_TEXT_SOURCES.en;
   try {
-    const liveMarkdown = await fetchTextWithTimeout(
-      `${buildDailyTextLiveUrl(source)}?v=${Date.now()}`,
-      DAILY_TEXT_LIVE_TIMEOUT_MS
-    );
-    return parseDailyTextMarkdown(liveMarkdown, source.sourceUrl, lang);
+    const liveUrls = [`${buildDailyTextLiveUrl(source)}?v=${Date.now()}`, `${source.liveBaseUrl}?v=${Date.now()}`];
+    let lastLiveError = null;
+    for (const liveUrl of liveUrls) {
+      try {
+        const liveMarkdown = await fetchTextWithTimeout(liveUrl, DAILY_TEXT_LIVE_TIMEOUT_MS);
+        const parsed = parseDailyTextMarkdown(liveMarkdown, source.sourceUrl, lang);
+        if (isDailyTextEntryCurrent(parsed, lang)) {
+          return parsed;
+        }
+        lastLiveError = new Error(`live source returned stale Daily Text for ${lang}`);
+      } catch (liveErr) {
+        lastLiveError = liveErr;
+      }
+    }
+    throw lastLiveError || new Error(`live Daily Text failed for ${lang}`);
   } catch (liveErr) {
     const fallback = await loadJsonFresh(source.fallbackPaths);
+    if (!isDailyTextEntryCurrent(fallback, lang)) {
+      throw new Error(`Daily Text fallback is stale for ${lang}`);
+    }
     return {
       dateLabel: fallback.date_label || "Daily Text",
       verse: fallback.verse || "Daily scripture unavailable.",
@@ -414,6 +429,7 @@ function loadDailyTextCacheForLang(lang) {
     if (!raw) return null;
     const parsed = JSON.parse(raw);
     if (!parsed || !parsed.dateLabel || !parsed.verse) return null;
+    if (!isDailyTextEntryCurrent(parsed, lang)) return null;
     return parsed;
   } catch (err) {
     return null;
@@ -1205,25 +1221,6 @@ async function refreshAllergyData(force = false) {
   renderAllergyWidget();
 }
 
-function ctDateYmd(dateValue = new Date()) {
-  const dt = dateValue instanceof Date ? dateValue : new Date(dateValue);
-  if (Number.isNaN(dt.getTime())) return "";
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Chicago",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit"
-  }).formatToParts(dt);
-  const year = parts.find((p) => p.type === "year")?.value || "0000";
-  const month = parts.find((p) => p.type === "month")?.value || "01";
-  const day = parts.find((p) => p.type === "day")?.value || "01";
-  return `${year}-${month}-${day}`;
-}
-
-function wbcIsVisibleNow() {
-  return ctDateYmd() <= WBC_VISIBLE_THROUGH_CT;
-}
-
 function formatCtTime(isoDate) {
   const dt = new Date(isoDate);
   if (Number.isNaN(dt.getTime())) return "TBD";
@@ -1245,35 +1242,108 @@ function formatCtDayLabel(isoDate) {
   }).format(dt);
 }
 
-function toYmdCompact(dateStr) {
-  return String(dateStr || "").slice(0, 10).replace(/-/g, "");
+function renderAstrosFeatureCard(label, game) {
+  if (!game) {
+    return `
+      <div class="astros-feature-card">
+        <div class="astros-feature-top">
+          <div class="astros-feature-label">${escapeHtml(label)}</div>
+        </div>
+        <div class="weather-loading">Game data unavailable.</div>
+      </div>
+    `;
+  }
+
+  const leftName = game.homeAway === "home" ? game.opponentName || "TBD" : game.astrosName || "Astros";
+  const leftLogo = game.homeAway === "home" ? game.opponentLogo || "" : game.astrosLogo || "";
+  const leftScore = game.homeAway === "home" ? game.opponentScore : game.astrosScore;
+  const rightName = game.homeAway === "home" ? game.astrosName || "Astros" : game.opponentName || "TBD";
+  const rightLogo = game.homeAway === "home" ? game.astrosLogo || "" : game.opponentLogo || "";
+  const rightScore = game.homeAway === "home" ? game.astrosScore : game.opponentScore;
+  const statusText =
+    game.state === "post" ? "Final" : game.state === "in" ? game.shortStatus || "Live" : "Scheduled";
+
+  return `
+    <div class="astros-feature-card">
+      <div class="astros-feature-top">
+        <div class="astros-feature-label">${escapeHtml(label)}</div>
+        <span class="game-status-pill">${escapeHtml(statusText)}</span>
+      </div>
+      <div class="astros-feature-meta">${escapeHtml(formatCtDayLabel(game.date))} • ${escapeHtml(formatCtTime(game.date))} CT</div>
+      <div class="astros-feature-scoreline">
+        <div class="astros-team-row">
+          <div class="astros-team-id">${renderTeamChip(leftName, leftLogo)}</div>
+          <div class="astros-team-score">${leftScore ?? "-"}</div>
+        </div>
+        <div class="astros-versus">vs</div>
+        <div class="astros-team-row">
+          <div class="astros-team-id">${renderTeamChip(rightName, rightLogo)}</div>
+          <div class="astros-team-score">${rightScore ?? "-"}</div>
+        </div>
+      </div>
+    </div>
+  `;
 }
 
-function mapWbcEvent(event) {
-  const comp = (event && event.competitions && event.competitions[0]) || {};
-  const teams = Array.isArray(comp.competitors) ? comp.competitors : [];
-  const home = teams.find((t) => t.homeAway === "home") || teams[0] || {};
-  const away = teams.find((t) => t.homeAway === "away") || teams[1] || {};
-  const statusType = (comp.status && comp.status.type) || {};
-  const tvName =
-    (comp.geoBroadcasts || []).find((b) => b?.media?.shortName)?.media?.shortName ||
-    (comp.broadcasts || []).flatMap((b) => b?.names || [])[0] ||
-    comp.broadcast ||
-    "TBD";
-  const venue = comp.venue || {};
-  const city = venue.address && venue.address.city ? venue.address.city : "";
-  return {
-    id: String(event?.id || comp?.id || `${event?.name || "game"}-${event?.date || ""}`),
-    date: event?.date || comp?.date || null,
-    awayTeamName: away?.team?.shortDisplayName || away?.team?.displayName || "TBD",
-    awayTeamLogo: pickTeamLogo(away?.team),
-    homeTeamName: home?.team?.shortDisplayName || home?.team?.displayName || "TBD",
-    homeTeamLogo: pickTeamLogo(home?.team),
-    shortStatus: statusType.shortDetail || statusType.detail || statusType.description || "Scheduled",
-    state: statusType.state || "pre",
-    tv: tvName,
-    location: [city, venue.fullName].filter(Boolean).join(" • ")
-  };
+function renderStatusTicker() {
+  const root = document.getElementById("statusTicker");
+  if (!root) return;
+
+  const weather = state.weather;
+  const allergy = state.allergy;
+  const astros = state.astros;
+  const dustItem =
+    (Array.isArray(allergy.items) &&
+      allergy.items.find((item) => String(item.name || "").toLowerCase().includes("dust"))) ||
+    null;
+
+  const weatherText =
+    weather.status === "ready"
+      ? `${weather.place} ${weather.currentTempF}\u00b0, ${weather.summary}, H ${weather.highF}\u00b0 / L ${weather.lowF}\u00b0, Wind ${weather.windMph} mph`
+      : "Houston weather loading";
+  const dustText =
+    allergy.status === "ready"
+      ? `Dust & Dander ${Number.isFinite(Number(dustItem?.value)) ? `${Number(dustItem.value)}/5` : "n/a"}${dustItem?.category ? `, ${dustItem.category}` : ""}`
+      : "Dust & Dander loading";
+
+  const prev = astros.previousGame;
+  const next = astros.nextGame;
+  const prevText =
+    astros.status === "ready"
+      ? prev
+        ? `Astros previous: ${prev.astrosName} ${prev.astrosScore ?? "-"} - ${prev.opponentName} ${prev.opponentScore ?? "-"}${prev.date ? ` on ${formatCtDayLabel(prev.date)}` : ""}`
+        : "Astros previous game unavailable"
+      : "Astros previous game loading";
+  const nextText =
+    astros.status === "ready"
+      ? next
+        ? `Astros next: ${next.homeAway === "home" ? `${next.opponentName} at ${next.astrosName}` : `${next.astrosName} at ${next.opponentName}`}${next.date ? ` on ${formatCtDayLabel(next.date)} at ${formatCtTime(next.date)} CT` : ""}`
+        : "Astros next game unavailable"
+      : "Astros next game loading";
+
+  const items = [
+    { label: "Weather", value: weatherText },
+    { label: "Dust", value: dustText },
+    { label: "Astros", value: prevText },
+    { label: "Next", value: nextText }
+  ];
+
+  const rowMarkup = items
+    .map(
+      (item) => `
+        <span class="ticker-item">
+          <span class="ticker-label">${escapeHtml(item.label)}</span>
+          <span>${escapeHtml(item.value)}</span>
+        </span>
+        <span class="ticker-divider" aria-hidden="true"></span>
+      `
+    )
+    .join("");
+
+  root.innerHTML = `
+    <div class="ticker-track">${rowMarkup}</div>
+    <div class="ticker-track" aria-hidden="true">${rowMarkup}</div>
+  `;
 }
 
 function mapAstrosEvent(event) {
@@ -1310,45 +1380,6 @@ function mapAstrosEvent(event) {
   };
 }
 
-function flattenWbcPools(node, out = []) {
-  if (!node || typeof node !== "object") return out;
-  if (String(node.name || "").startsWith("Pool ") && node.standings && Array.isArray(node.standings.entries)) {
-    out.push(node);
-  }
-  const children = Array.isArray(node.children) ? node.children : [];
-  for (const child of children) flattenWbcPools(child, out);
-  return out;
-}
-
-function pickStat(entry, type, fallbackType) {
-  const stats = Array.isArray(entry?.stats) ? entry.stats : [];
-  return stats.find((s) => s.type === type || (fallbackType && s.type === fallbackType));
-}
-
-function mapWbcStandings(payload) {
-  const pools = flattenWbcPools(payload, []);
-  return pools.map((pool) => {
-    const rows = (pool.standings.entries || []).map((entry) => {
-      const team = entry.team || {};
-      const wins = pickStat(entry, "wins");
-      const losses = pickStat(entry, "losses");
-      const pct = pickStat(entry, "winpercent");
-      const gb = pickStat(entry, "gamesbehind");
-      const diff = pickStat(entry, "pointdifferential");
-      return {
-        team: team.shortDisplayName || team.displayName || team.abbreviation || "Team",
-        teamLogo: pickTeamLogo(team),
-        w: wins?.displayValue || "0",
-        l: losses?.displayValue || "0",
-        pct: pct?.displayValue || ".000",
-        gb: gb?.displayValue || "-",
-        diff: diff?.displayValue || "0"
-      };
-    });
-    return { pool: pool.name || "Pool", rows };
-  });
-}
-
 function tryParseJson(text) {
   try {
     return JSON.parse(text);
@@ -1383,114 +1414,6 @@ async function fetchJsonWithJinaFallback(url) {
   return parsed;
 }
 
-function renderWbcPanel() {
-  const panel = document.getElementById("wbcPanel");
-  const section = document.getElementById("wbcCard");
-  if (!panel || !section) return;
-
-  if (!state.wbc.visible) {
-    section.hidden = true;
-    return;
-  }
-  section.hidden = false;
-
-  if (state.wbc.status === "loading") {
-    panel.innerHTML = `<div class="weather-loading">Loading WBC schedule...</div>`;
-    return;
-  }
-  if (state.wbc.status === "error") {
-    panel.innerHTML = `<div class="weather-loading">WBC data unavailable right now.</div>`;
-    return;
-  }
-
-  const collapsedRows = state.wbc.todayGames
-    .map(
-      (g) => `<div class="wbc-game-row">
-        <span class="wbc-matchup">
-          ${renderTeamChip(g.awayTeamName, g.awayTeamLogo)}
-          <span class="team-vs">vs</span>
-          ${renderTeamChip(g.homeTeamName, g.homeTeamLogo)}
-        </span>
-        <span class="wbc-time">${formatCtTime(g.date)} CT</span>
-        <span class="wbc-tv">${g.tv}</span>
-        <span class="wbc-location">${g.location || "TBD"}</span>
-      </div>`
-    )
-    .join("");
-
-  const gamesByDate = new Map();
-  state.wbc.allGames.forEach((game) => {
-    const key = ctDateYmd(game.date);
-    if (!key) return;
-    if (!gamesByDate.has(key)) gamesByDate.set(key, []);
-    gamesByDate.get(key).push(game);
-  });
-
-  const allRows = Array.from(gamesByDate.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(
-      ([, games]) => `<div class="wbc-day-block">
-        <div class="wbc-day-head">${formatCtDayLabel(games[0].date)}</div>
-        <div class="wbc-day-games">
-          ${games
-            .map(
-              (g) => `<div class="wbc-game-row">
-                <span class="wbc-matchup">
-                  ${renderTeamChip(g.awayTeamName, g.awayTeamLogo)}
-                  <span class="team-vs">vs</span>
-                  ${renderTeamChip(g.homeTeamName, g.homeTeamLogo)}
-                </span>
-                <span class="wbc-time">${formatCtTime(g.date)} CT</span>
-                <span class="wbc-tv">${g.tv}</span>
-                <span class="wbc-location">${g.location || "TBD"}</span>
-              </div>`
-            )
-            .join("")}
-        </div>
-      </div>`
-    )
-    .join("");
-
-  const standingsMarkup =
-    Array.isArray(state.wbc.standings) && state.wbc.standings.length
-      ? `<div class="wbc-subtitle">Standings (Pools)</div>
-         <div class="wbc-standings-simple">
-           ${state.wbc.standings
-             .slice(0, 4)
-             .map(
-               (pool) => `<div class="wbc-pool-col">
-                 <h4>${pool.pool}</h4>
-                 <div class="wbc-pool-head"><span>Team</span><span>W</span><span>L</span></div>
-                 ${(pool.rows || [])
-                   .map(
-                     (r) =>
-                       `<div class="wbc-pool-row"><span>${renderTeamChip(r.team, r.teamLogo)}</span><span>${r.w}</span><span>${r.l}</span></div>`
-                   )
-                   .join("")}
-               </div>`
-             )
-             .join("")}
-         </div>`
-      : `<div class="wbc-subtitle">Standings (Pools)</div><div class="weather-loading">Standings unavailable right now.</div>`;
-
-  panel.innerHTML = `
-    <div class="wbc-shell ${state.wbc.expanded ? "is-expanded" : "is-collapsed"}">
-      <div class="wbc-top">
-        <div class="wbc-title">World Baseball Classic</div>
-        <div class="wbc-updated">Updated ${state.wbc.updatedAt || "now"}</div>
-      </div>
-      <div class="wbc-subtitle">Today's Matchups (CT)</div>
-      <div class="wbc-games">${collapsedRows || `<div class="weather-loading">No games today.</div>`}</div>
-      <div class="wbc-expand-hint">${state.wbc.expanded ? "Tap to collapse" : "Tap to expand full schedule"}</div>
-      <div class="wbc-expanded">
-        <div class="wbc-subtitle">Rest of Tournament Schedule</div>
-        <div class="wbc-games wbc-games-all">${allRows || `<div class="weather-loading">No upcoming games.</div>`}</div>
-      </div>
-      ${standingsMarkup}
-    </div>
-  `;
-}
-
 function renderAstrosPanel() {
   const panel = document.getElementById("astrosPanel");
   const card = document.getElementById("astrosCard");
@@ -1508,6 +1431,7 @@ function renderAstrosPanel() {
 
   const prev = state.astros.previousGame;
   const next = state.astros.nextGame;
+  const isWidgetsPage = document.body.classList.contains("widgets-page");
   const renderTeamWithScore = (name, logo, score) => {
     const scoreMarkup = score !== null && score !== undefined ? `<span class="team-score">${score}</span>` : "";
     return `${renderTeamChip(name, logo)}${scoreMarkup}`;
@@ -1527,9 +1451,32 @@ function renderAstrosPanel() {
         ? `<span class="game-status-pill">F</span>`
         : g.state === "in"
           ? `<span class="game-status-pill">${escapeHtml(g.shortStatus || "Live")}</span>`
-          : "";
+        : "";
     return `${left}<span class="team-vs">vs</span>${right}${statusTag}`;
   };
+  if (isWidgetsPage) {
+    const headline =
+      next && next.opponentName
+        ? `${next.homeAway === "home" ? next.opponentName : "Astros"} ${next.homeAway === "home" ? "at Minute Maid" : `at ${next.opponentName}`}`
+        : "Astros game board";
+    panel.innerHTML = `
+      <div class="astros-shell astros-shell-featured">
+        <div class="astros-hero-band">
+          <div class="astros-hero-copy">
+            <div class="astros-kicker">Houston Baseball</div>
+            <div class="astros-headline">${escapeHtml(headline)}</div>
+            <div class="astros-subhead">Previous result and next first pitch in one board. Updated ${escapeHtml(state.astros.updatedAt || "now")}.</div>
+          </div>
+          <div class="astros-badge">H</div>
+        </div>
+        <div class="astros-feature-grid">
+          ${renderAstrosFeatureCard(prev && prev.state === "in" ? "Live Game" : "Previous Game", prev)}
+          ${renderAstrosFeatureCard("Next Game", next)}
+        </div>
+      </div>
+    `;
+    return;
+  }
   panel.innerHTML = `
     <div class="astros-shell">
       <div class="wbc-updated">Updated ${state.astros.updatedAt || "now"}</div>
@@ -1555,62 +1502,6 @@ function renderAstrosPanel() {
       </div>
     </div>
   `;
-}
-
-async function refreshWbcData() {
-  state.wbc.visible = wbcIsVisibleNow();
-  if (!state.wbc.visible) {
-    renderWbcPanel();
-    return;
-  }
-
-  state.wbc.status = "loading";
-  renderWbcPanel();
-  try {
-    const boardPayload = await fetchJsonWithJinaFallback(`${WBC_SCOREBOARD_URL}?${Date.now()}`);
-
-    const todayYmd = ctDateYmd();
-    const todayEvents = Array.isArray(boardPayload.events) ? boardPayload.events : [];
-    const todayGames = todayEvents.map(mapWbcEvent);
-
-    const calendar = (((boardPayload || {}).leagues || [])[0] || {}).calendar || [];
-    const dateKeys = Array.from(new Set(calendar.map((d) => toYmdCompact(d)).filter(Boolean)));
-    const datePayloads = await Promise.all(
-      dateKeys.map(async (dateKey) => {
-        try {
-          return await fetchJsonWithJinaFallback(`${WBC_SCOREBOARD_URL}?dates=${dateKey}&v=${Date.now()}`);
-        } catch (err) {
-          return null;
-        }
-      })
-    );
-    const allGames = datePayloads
-      .flatMap((p) => (Array.isArray(p?.events) ? p.events : []))
-      .map(mapWbcEvent)
-      .filter((g) => Boolean(g.date) && Boolean(ctDateYmd(g.date)))
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    let standings = [];
-    try {
-      const standingsPayload = await fetchJsonWithJinaFallback(`${WBC_STANDINGS_URL}&v=${Date.now()}`);
-      standings = mapWbcStandings(standingsPayload);
-    } catch (err) {
-      standings = [];
-    }
-
-    state.wbc = {
-      ...state.wbc,
-      visible: true,
-      todayGames: todayGames.filter((g) => g.date && ctDateYmd(g.date) === todayYmd),
-      allGames: allGames.filter((g) => ctDateYmd(g.date) > todayYmd),
-      standings,
-      updatedAt: new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }),
-      status: "ready"
-    };
-  } catch (err) {
-    state.wbc = { ...state.wbc, status: "error" };
-  }
-  renderWbcPanel();
 }
 
 async function refreshAstrosData() {
@@ -2209,8 +2100,8 @@ function renderAll() {
   if (!state.rawMap) return;
   const filteredMap = applyFilters(state.rawMap);
 
+  renderStatusTicker();
   renderDailyTextHero();
-  renderWbcPanel();
   renderAstrosPanel();
   renderJwPanel();
   renderQuickAccessPanel(state.quickAccess, state.commandCenterAccess, state.rtahData, state.tunnelStatus);
@@ -2450,15 +2341,6 @@ function bindControls() {
       renderAllergyWidget();
     });
   }
-  const wbcPanel = document.getElementById("wbcPanel");
-  if (wbcPanel) {
-    wbcPanel.addEventListener("click", (event) => {
-      const target = event.target;
-      if (target instanceof HTMLElement && target.closest("a, button, input, label")) return;
-      state.wbc.expanded = !state.wbc.expanded;
-      renderWbcPanel();
-    });
-  }
   document.addEventListener("click", (event) => {
     const target = event.target;
     if (!(target instanceof HTMLElement)) return;
@@ -2532,7 +2414,6 @@ async function refreshData() {
   state.commandCenterAccess = commandCenterAccess;
   state.quickAccess = quickAccess;
   refreshDailyText(true).catch(() => {});
-  await refreshWbcData();
   await refreshAstrosData();
   await refreshWeatherData();
   await refreshAllergyData(true);
